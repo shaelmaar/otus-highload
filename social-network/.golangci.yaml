@@ -1,0 +1,105 @@
+version: "2"
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - funlen
+        - gosec
+        - dupl
+        - contextcheck
+        - exhaustruct
+
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - cyclop
+    - decorder
+    - dogsled
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - grouper
+    - importas
+    - interfacebloat
+    - lll
+    - maintidx
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - paralleltest
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tagliatelle
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+
+  settings:
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+    nlreturn:
+      block-size: 3
+    funlen:
+      lines: 100
+      statements: 50
+    gocyclo:
+      min-complexity: 15
+    cyclop:
+      max-complexity: 15
+      skip-tests: true
+    goconst:
+      ignore-tests: true
+    revive:
+      severity: warning
+      rules:
+        - name: indent-error-flow
+        - name: empty-block
+        - name: unexported-return
+        - name: range-val-in-closure
+        - name: if-return
+
+
+
+output:
+  format: colored-line-number
