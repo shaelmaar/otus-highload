@@ -14,6 +14,8 @@ type Config struct {
 
 	Log Log
 
+	Database Database `envconfig:"DB"`
+
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }
 

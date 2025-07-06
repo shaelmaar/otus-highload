@@ -1,8 +1,11 @@
 package deps
 
 import (
+	"context"
+	"fmt"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -55,4 +58,27 @@ func provideLogger(cfg *config.Config) *zap.Logger {
 	)
 
 	return zap.New(core, zap.AddStacktrace(stacktraceLevel))
+}
+
+func providePostgresql(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+	pgxCfg, err := cfg.Database.PgxConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgreSQL: %w", err)
+	}
+
+	err = pool.Ping(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ping postgreSQL: %w", err)
+	}
+
+	return pool, nil
+}
+
+func provideUserUseCases() {
+
 }

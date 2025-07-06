@@ -1,0 +1,60 @@
+import (
+  "context"
+
+  "github.com/jackc/pgx/v5"
+)
+
+{{ $txer := (or .Vars.DecoratorName (printf "%sTX" .Interface.Name)) }}
+
+type {{$txer}} interface {
+    {{.Interface.Type}}
+    WithTx(tx pgx.Tx) {{$txer}}
+}
+
+type txMutex struct {
+	sync.Mutex
+
+	inTx bool
+}
+
+func (mx *txMutex) Lock() {
+	if mx.inTx {
+		mx.Mutex.Lock()
+	}
+}
+
+func (mx *txMutex) Unlock() {
+	if mx.inTx {
+		mx.Mutex.Unlock()
+	}
+}
+
+type QueriesTX struct {
+	base *Queries
+	mx txMutex
+	inTx bool
+}
+
+func NewQueriesTX(base *Queries) *QueriesTX {
+    return &QueriesTX{base: base, mx: txMutex{Mutex: sync.Mutex{}, inTx: false}}
+}
+
+func (s *QueriesTX) WithTx(tx pgx.Tx) {{$txer}} {
+    if s.mx.inTx {
+        return s
+    }
+
+    return &QueriesTX{
+   		base: s.base.WithTx(tx),
+   		mx: txMutex{Mutex: sync.Mutex{}, inTx: true},
+    }
+}
+
+
+{{range $method := .Interface.Methods}}
+    func (_d *QueriesTX) {{$method.Declaration}} {
+        _d.mx.Lock()
+        defer _d.mx.Unlock()
+        {{$method.Pass "_d.base."}}
+    }
+{{end}}

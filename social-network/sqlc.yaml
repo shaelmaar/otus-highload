@@ -1,0 +1,20 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "postgresql/queries"
+    schema: "postgresql/migrations"
+    gen:
+      go:
+        sql_package: "pgx/v5"
+        package: "pg"
+        out: "internal/queries/pg"
+        emit_interface: true
+        overrides:
+          # по умолчанию pgx создает jsonb поля в виде []byte, но с таким типом не работает insert,
+          # с типом string работает.
+          - db_type: "jsonb"
+            go_type: "string"
+          - db_type: "pg_catalog.timestamptz"
+            go_type: "time.Time"
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
