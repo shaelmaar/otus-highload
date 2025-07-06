@@ -21,6 +21,7 @@ func (h *Handlers) Login(
 
 	userID, err := uuid.Parse(*req.Body.Id)
 	if err != nil {
+		//nolint:nilerr // пустой ответ в контрактах.
 		return serverhttp.PostLogin400Response{}, nil
 	}
 
@@ -44,9 +45,13 @@ func (h *Handlers) Login(
 					Message   string  `json:"message"`
 					RequestId *string `json:"request_id,omitempty"`
 				}{
-					Message: "Внутренняя ошибка сервера",
+					Code:      nil,
+					Message:   "Внутренняя ошибка сервера",
+					RequestId: nil,
 				},
-				Headers: serverhttp.N5xxResponseHeaders{},
+				Headers: serverhttp.N5xxResponseHeaders{
+					RetryAfter: 0,
+				},
 			},
 		}, nil
 	}

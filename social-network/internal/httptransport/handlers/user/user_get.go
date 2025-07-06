@@ -19,6 +19,7 @@ func (h *Handlers) GetByID(
 ) (serverhttp.GetUserGetIdResponseObject, error) {
 	userID, err := uuid.Parse(req.Id)
 	if err != nil {
+		//nolint:nilerr // пустой ответ в контрактах.
 		return serverhttp.GetUserGetId400Response{}, nil
 	}
 
@@ -37,9 +38,13 @@ func (h *Handlers) GetByID(
 					Message   string  `json:"message"`
 					RequestId *string `json:"request_id,omitempty"`
 				}{
-					Message: "Внутренняя ошибка сервера",
+					Code:      nil,
+					Message:   "Внутренняя ошибка сервера",
+					RequestId: nil,
 				},
-				Headers: serverhttp.N5xxResponseHeaders{},
+				Headers: serverhttp.N5xxResponseHeaders{
+					RetryAfter: 0,
+				},
 			},
 		}, nil
 	}

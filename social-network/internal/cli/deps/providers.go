@@ -78,7 +78,3 @@ func providePostgresql(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, 
 
 	return pool, nil
 }
-
-func provideUserUseCases() {
-
-}
