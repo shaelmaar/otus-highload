@@ -1,6 +1,12 @@
 GEN_DIR := ./gen
 
-.PHONY: generate-server lint generate-sql
+.PHONY: run clean generate-server lint generate-sql
+
+run:
+	docker-compose --env-file .env.compose up  --build -d --force-recreate
+
+stop:
+	docker-compose down --remove-orphans
 
 build-docker-oapi:
 	docker build -f Dockerfile-oapi -t otus-highload-oapi-gen .

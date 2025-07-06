@@ -50,6 +50,9 @@ func Execute(ctx context.Context) error {
 	// server.
 	rootCmd.AddCommand(NewServeCommand(container))
 
+	// migrations.
+	rootCmd.AddCommand(NewMigrateCommand(container))
+
 	//nolint:wrapcheck // не нужно оборачивать здесь ошибку.
 	return rootCmd.ExecuteContext(ctx)
 }
