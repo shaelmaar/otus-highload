@@ -1,0 +1,126 @@
+{
+	"info": {
+		"_postman_id": "2ebe25f9-5393-4327-8b02-88c6b833a3a4",
+		"name": "otus-highload",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "7653466"
+	},
+	"item": [
+		{
+			"name": "user-register",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"first_name\": \"Иван\",\n    \"second_name\": \"Петров\",\n    \"password\": \"some_password\",\n    \"birthdate\": \"1995-05-05\",\n    \"biography\": \"музыка кино\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:{{port}}/user/register",
+					"host": [
+						"localhost"
+					],
+					"port": "{{port}}",
+					"path": [
+						"user",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"e3d57edf-a555-4c03-8f26-2573d11546f1\",\n    \"password\": \"some_password\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:{{port}}/login",
+					"host": [
+						"localhost"
+					],
+					"port": "{{port}}",
+					"path": [
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"0cc18978-85e5-47d2-9532-6c1995ae0c8a\",\n    \"password\": \"some_password\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:{{port}}/user/get/e3d57edf-a555-4c03-8f26-2573d11546f1",
+					"host": [
+						"localhost"
+					],
+					"port": "{{port}}",
+					"path": [
+						"user",
+						"get",
+						"e3d57edf-a555-4c03-8f26-2573d11546f1"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "port",
+			"value": "8080",
+			"type": "string"
+		}
+	]
+}
