@@ -73,6 +73,15 @@ type PostUserRegisterJSONBody struct {
 	SecondName *string    `json:"second_name,omitempty"`
 }
 
+// GetUserSearchParams defines parameters for GetUserSearch.
+type GetUserSearchParams struct {
+	// FirstName Условие поиска по имени
+	FirstName string `form:"first_name" json:"first_name"`
+
+	// LastName Условие поиска по фамилии
+	LastName string `form:"last_name" json:"last_name"`
+}
+
 // PostLoginJSONRequestBody defines body for PostLogin for application/json ContentType.
 type PostLoginJSONRequestBody PostLoginJSONBody
 
@@ -90,6 +99,9 @@ type ServerInterface interface {
 
 	// (POST /user/register)
 	PostUserRegister(ctx echo.Context) error
+
+	// (GET /user/search)
+	GetUserSearch(ctx echo.Context, params GetUserSearchParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -131,6 +143,31 @@ func (w *ServerInterfaceWrapper) PostUserRegister(ctx echo.Context) error {
 	return err
 }
 
+// GetUserSearch converts echo context to params.
+func (w *ServerInterfaceWrapper) GetUserSearch(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetUserSearchParams
+	// ------------- Required query parameter "first_name" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "first_name", ctx.QueryParams(), &params.FirstName)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter first_name: %s", err))
+	}
+
+	// ------------- Required query parameter "last_name" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "last_name", ctx.QueryParams(), &params.LastName)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter last_name: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetUserSearch(ctx, params)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -162,6 +199,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/login", wrapper.PostLogin)
 	router.GET(baseURL+"/user/get/:id", wrapper.GetUserGetId)
 	router.POST(baseURL+"/user/register", wrapper.PostUserRegister)
+	router.GET(baseURL+"/user/search", wrapper.GetUserSearch)
 
 }
 
@@ -386,6 +424,67 @@ func (response PostUserRegister503JSONResponse) VisitPostUserRegisterResponse(w 
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetUserSearchRequestObject struct {
+	Params GetUserSearchParams
+}
+
+type GetUserSearchResponseObject interface {
+	VisitGetUserSearchResponse(w http.ResponseWriter) error
+}
+
+type GetUserSearch200JSONResponse []User
+
+func (response GetUserSearch200JSONResponse) VisitGetUserSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserSearch400Response struct {
+}
+
+func (response GetUserSearch400Response) VisitGetUserSearchResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetUserSearch500JSONResponse struct{ N5xxJSONResponse }
+
+func (response GetUserSearch500JSONResponse) VisitGetUserSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetUserSearch503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type GetUserSearch503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers GetUserSearch503ResponseHeaders
+}
+
+func (response GetUserSearch503JSONResponse) VisitGetUserSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -397,6 +496,9 @@ type StrictServerInterface interface {
 
 	// (POST /user/register)
 	PostUserRegister(ctx context.Context, request PostUserRegisterRequestObject) (PostUserRegisterResponseObject, error)
+
+	// (GET /user/search)
+	GetUserSearch(ctx context.Context, request GetUserSearchRequestObject) (GetUserSearchResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -488,6 +590,31 @@ func (sh *strictHandler) PostUserRegister(ctx echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(PostUserRegisterResponseObject); ok {
 		return validResponse.VisitPostUserRegisterResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetUserSearch operation middleware
+func (sh *strictHandler) GetUserSearch(ctx echo.Context, params GetUserSearchParams) error {
+	var request GetUserSearchRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUserSearch(ctx.Request().Context(), request.(GetUserSearchRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUserSearch")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetUserSearchResponseObject); ok {
+		return validResponse.VisitGetUserSearchResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

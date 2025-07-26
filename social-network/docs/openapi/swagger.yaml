@@ -38,6 +38,7 @@ paths:
           $ref: '#/components/responses/5xx'
         '503':
           $ref: '#/components/responses/5xx'
+
   /user/register:
     post:
       description: Регистрация нового пользователя
@@ -81,6 +82,7 @@ paths:
           $ref: '#/components/responses/5xx'
         '503':
           $ref: '#/components/responses/5xx'
+
   /user/get/{id}:
     get:
       description: Получение анкеты пользователя
@@ -102,6 +104,41 @@ paths:
           description: Невалидные данные
         '404':
           description: Анкета не найдена
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+  /user/search:
+    get:
+      description: Поиск анкет
+      parameters:
+        - name: first_name
+          schema:
+            type: string
+            description: Часть имени для поиска
+            example: Конст
+          in: query
+          required: true
+          description: Условие поиска по имени
+        - name: last_name
+          schema:
+            type: string
+            description: Часть фамилии для поиска
+            example: Оси
+          in: query
+          required: true
+          description: Условие поиска по фамилии
+      responses:
+        '200':
+          description: Успешные поиск пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '400':
+          description: Невалидные данные
         '500':
           $ref: '#/components/responses/5xx'
         '503':
@@ -147,9 +184,11 @@ components:
       description: Дата рождения
       format: date
       example: '2017-02-01'
+
     UserId:
       type: string
       description: Идентификатор пользователя
+
     User:
       type: object
       properties:
@@ -173,6 +212,7 @@ components:
           type: string
           example: Москва
           description: Город
+
   securitySchemes:
     bearerAuth:
       type: http

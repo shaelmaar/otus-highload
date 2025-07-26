@@ -81,3 +81,15 @@ func (_d *QueriesTX) UserTokenDeleteByUserID(ctx context.Context, userID uuid.UU
 	defer _d.mx.Unlock()
 	return _d.base.UserTokenDeleteByUserID(ctx, userID)
 }
+
+func (_d *QueriesTX) UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) (ua1 []User, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.UsersGetByFirstNameSecondName(ctx, arg)
+}
+
+func (_d *QueriesTX) UsersMassCreate(ctx context.Context, arg []UsersMassCreateParams) (i1 int64, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.UsersMassCreate(ctx, arg)
+}

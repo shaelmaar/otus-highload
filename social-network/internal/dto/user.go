@@ -19,3 +19,8 @@ type RegisterDTO struct {
 	Biography  string
 	City       string
 }
+
+type SearchDTO struct {
+	FirstName string
+	LastName  string
+}

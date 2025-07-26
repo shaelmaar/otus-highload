@@ -10,6 +10,7 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
+	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
@@ -32,24 +33,15 @@ func (h *Handlers) GetByID(
 		h.logger.Error("internal error", zap.Error(err))
 
 		return serverhttp.GetUserGetId500JSONResponse{
-			N5xxJSONResponse: serverhttp.N5xxJSONResponse{
-				Body: struct {
-					Code      *int    `json:"code,omitempty"`
-					Message   string  `json:"message"`
-					RequestId *string `json:"request_id,omitempty"`
-				}{
-					Code:      nil,
-					Message:   "Внутренняя ошибка сервера",
-					RequestId: nil,
-				},
-				Headers: serverhttp.N5xxResponseHeaders{
-					RetryAfter: 0,
-				},
-			},
+			N5xxJSONResponse: handlers.Simple500JSONResponse(""),
 		}, nil
 	}
 
-	return serverhttp.GetUserGetId200JSONResponse{
+	return serverhttp.GetUserGetId200JSONResponse(parseUser(user)), nil
+}
+
+func parseUser(user domain.User) serverhttp.User {
+	return serverhttp.User{
 		Biography: utils.Ptr(user.Biography),
 		Birthdate: utils.Ptr(openapitypes.Date{
 			Time: user.BirthDate,
@@ -58,5 +50,5 @@ func (h *Handlers) GetByID(
 		FirstName:  utils.Ptr(user.FirstName),
 		Id:         utils.Ptr(user.ID.String()),
 		SecondName: utils.Ptr(user.SecondName),
-	}, nil
+	}
 }

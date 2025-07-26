@@ -26,3 +26,10 @@ func (h *Handlers) PostUserRegister(
 ) (serverhttp.PostUserRegisterResponseObject, error) {
 	return h.user.Register(ctx, req)
 }
+
+// GetUserSearch поиск пользователя. (GET /user/search).
+func (h *Handlers) GetUserSearch(
+	ctx context.Context, req serverhttp.GetUserSearchRequestObject,
+) (serverhttp.GetUserSearchResponseObject, error) {
+	return h.user.UserSearch(ctx, req)
+}

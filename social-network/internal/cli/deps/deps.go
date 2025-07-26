@@ -7,6 +7,7 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
+	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 )
 
 func (c *Container) Config() *config.Config {
@@ -23,4 +24,8 @@ func (c *Container) Logger() *zap.Logger {
 
 func (c *Container) HTTPServer() *server.Server {
 	return do.MustInvoke[*server.Server](c.i)
+}
+
+func (c *Container) UserUseCases() *userUseCases.UseCases {
+	return do.MustInvoke[*userUseCases.UseCases](c.i)
 }

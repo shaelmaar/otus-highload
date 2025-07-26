@@ -16,6 +16,7 @@ type UseCases interface {
 	Login(ctx context.Context, dto dto.LoginDTO) (domain.UserToken, error)
 	Register(ctx context.Context, dto dto.RegisterDTO) (domain.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
+	Search(ctx context.Context, dto dto.SearchDTO) ([]domain.User, error)
 }
 
 type Handlers struct {

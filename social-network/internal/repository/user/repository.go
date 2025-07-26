@@ -39,16 +39,19 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (domain.User, er
 		return out, fmt.Errorf("failed to get user by id from db: %w", err)
 	}
 
-	return domain.User{
-		ID:           row.ID,
-		PasswordHash: row.PasswordHash,
-		FirstName:    row.FirstName,
-		SecondName:   row.SecondName,
-		BirthDate:    row.BirthDate.Time,
-		Gender:       domain.Gender(row.Gender),
-		Biography:    row.Biography,
-		City:         row.City,
-	}, nil
+	return parseUserRow(row), nil
+}
+
+func (r *Repository) GetByFirstNameLastName(ctx context.Context, firstName, lastName string) ([]domain.User, error) {
+	rows, err := r.db.UsersGetByFirstNameSecondName(ctx, pg.UsersGetByFirstNameSecondNameParams{
+		FirstName:  firstName,
+		SecondName: lastName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users by first and last name from db: %w", err)
+	}
+
+	return utils.MapSlice(rows, parseUserRow), nil
 }
 
 func (r *Repository) Create(ctx context.Context, user domain.User) error {
@@ -99,8 +102,45 @@ func (r *Repository) CreateUserToken(ctx context.Context, token domain.UserToken
 	return id, nil
 }
 
+func (r *Repository) MassCreate(ctx context.Context, users []domain.User) error {
+	_, err := r.db.UsersMassCreate(ctx, utils.MapSlice(users, func(u domain.User) pg.UsersMassCreateParams {
+		return pg.UsersMassCreateParams{
+			ID:           u.ID,
+			PasswordHash: u.PasswordHash,
+			FirstName:    u.FirstName,
+			SecondName:   u.SecondName,
+			BirthDate: pgtype.Date{
+				Time:             u.BirthDate,
+				InfinityModifier: pgtype.Finite,
+				Valid:            !u.BirthDate.IsZero(),
+			},
+			Gender:    pg.Gender(u.Gender),
+			Biography: u.Biography,
+			City:      u.City,
+		}
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to mass create users in db: %w", err)
+	}
+
+	return nil
+}
+
 func (r *Repository) WithTx(tx transaction.Tx) domain.UserRepository {
 	return &Repository{
 		db: r.db.WithTx(tx),
+	}
+}
+
+func parseUserRow(row pg.User) domain.User {
+	return domain.User{
+		ID:           row.ID,
+		PasswordHash: row.PasswordHash,
+		FirstName:    row.FirstName,
+		SecondName:   row.SecondName,
+		BirthDate:    row.BirthDate.Time,
+		Gender:       domain.Gender(row.Gender),
+		Biography:    row.Biography,
+		City:         row.City,
 	}
 }

@@ -22,6 +22,7 @@ RUN --mount=target=. \
 FROM golang:1.24-alpine AS release
 
 COPY --from=build /out/migrations /app/postgresql/migrations
+COPY --from=build /app/resources /app/resources
 
 WORKDIR /app
 

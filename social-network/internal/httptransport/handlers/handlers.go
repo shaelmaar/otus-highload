@@ -14,6 +14,8 @@ type UserHandlers interface {
 		req serverhttp.GetUserGetIdRequestObject) (serverhttp.GetUserGetIdResponseObject, error)
 	Register(ctx context.Context,
 		req serverhttp.PostUserRegisterRequestObject) (serverhttp.PostUserRegisterResponseObject, error)
+	UserSearch(ctx context.Context,
+		req serverhttp.GetUserSearchRequestObject) (serverhttp.GetUserSearchResponseObject, error)
 }
 
 type Handlers struct {

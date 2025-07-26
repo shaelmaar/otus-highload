@@ -1,6 +1,4 @@
-GEN_DIR := ./gen
-
-.PHONY: run clean generate-server lint generate-sql
+.PHONY: run stop generate-server lint generate-sql
 
 run:
 	docker-compose --env-file .env.compose up  --build -d --force-recreate

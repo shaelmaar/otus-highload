@@ -7,6 +7,7 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
@@ -30,20 +31,7 @@ func (h *Handlers) Register(
 		h.logger.Error("internal error", zap.Error(err))
 
 		return serverhttp.PostUserRegister500JSONResponse{
-			N5xxJSONResponse: serverhttp.N5xxJSONResponse{
-				Body: struct {
-					Code      *int    `json:"code,omitempty"`
-					Message   string  `json:"message"`
-					RequestId *string `json:"request_id,omitempty"`
-				}{
-					Code:      nil,
-					Message:   "Внутрення ошибка сервера",
-					RequestId: nil,
-				},
-				Headers: serverhttp.N5xxResponseHeaders{
-					RetryAfter: 0,
-				},
-			},
+			N5xxJSONResponse: handlers.Simple500JSONResponse(""),
 		}, nil
 	}
 

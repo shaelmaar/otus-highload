@@ -95,3 +95,57 @@ func (q *Queries) UserTokenDeleteByUserID(ctx context.Context, userID uuid.UUID)
 	_, err := q.db.Exec(ctx, userTokenDeleteByUserID, userID)
 	return err
 }
+
+const usersGetByFirstNameSecondName = `-- name: UsersGetByFirstNameSecondName :many
+select id, password_hash, first_name, second_name, birth_date, gender, biography, city, created_at, updated_at from "user"
+where first_name ilike '%' || $1::text || '%'
+    and second_name ilike '%' || $2::text || '%'
+order by id
+`
+
+type UsersGetByFirstNameSecondNameParams struct {
+	FirstName  string
+	SecondName string
+}
+
+func (q *Queries) UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, usersGetByFirstNameSecondName, arg.FirstName, arg.SecondName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.PasswordHash,
+			&i.FirstName,
+			&i.SecondName,
+			&i.BirthDate,
+			&i.Gender,
+			&i.Biography,
+			&i.City,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+type UsersMassCreateParams struct {
+	ID           uuid.UUID
+	PasswordHash string
+	FirstName    string
+	SecondName   string
+	BirthDate    pgtype.Date
+	Gender       Gender
+	Biography    string
+	City         string
+}

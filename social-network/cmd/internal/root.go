@@ -53,6 +53,10 @@ func Execute(ctx context.Context) error {
 	// migrations.
 	rootCmd.AddCommand(NewMigrateCommand(container))
 
+	// user import command.
+	//nolint:contextcheck // контекст берется из rootCmd.
+	rootCmd.AddCommand(NewImportUsersCommand(container))
+
 	//nolint:wrapcheck // не нужно оборачивать здесь ошибку.
 	return rootCmd.ExecuteContext(ctx)
 }

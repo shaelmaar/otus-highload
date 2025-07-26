@@ -15,6 +15,8 @@ type Querier interface {
 	UserGetByID(ctx context.Context, id uuid.UUID) (User, error)
 	UserTokenCreate(ctx context.Context, arg UserTokenCreateParams) (int64, error)
 	UserTokenDeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) ([]User, error)
+	UsersMassCreate(ctx context.Context, arg []UsersMassCreateParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

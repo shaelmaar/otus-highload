@@ -10,6 +10,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 )
 
 func (h *Handlers) Login(
@@ -39,20 +40,7 @@ func (h *Handlers) Login(
 		h.logger.Error("internal error", zap.Error(err))
 
 		return serverhttp.PostLogin500JSONResponse{
-			N5xxJSONResponse: serverhttp.N5xxJSONResponse{
-				Body: struct {
-					Code      *int    `json:"code,omitempty"`
-					Message   string  `json:"message"`
-					RequestId *string `json:"request_id,omitempty"`
-				}{
-					Code:      nil,
-					Message:   "Внутренняя ошибка сервера",
-					RequestId: nil,
-				},
-				Headers: serverhttp.N5xxResponseHeaders{
-					RetryAfter: 0,
-				},
-			},
+			N5xxJSONResponse: handlers.Simple500JSONResponse(""),
 		}, nil
 	}
 
