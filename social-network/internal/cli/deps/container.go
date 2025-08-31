@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	namePgxPool = "pgxPool"
-	nameQuerier = "querier"
+	namePgxPool        = "pgxPool"
+	nameReplicaPgxPool = "replicaPgxPool"
+	nameQuerier        = "querier"
+	nameReplicaQuerier = "replicaQuerier"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -63,8 +65,18 @@ func New(ctx context.Context) (*Container, error) {
 		return providePostgresql(ctx, cfg)
 	})
 
+	do.ProvideNamed(i, nameReplicaPgxPool, func(i *do.Injector) (*pgxpool.Pool, error) {
+		return provideReplicaPostgresql(
+			ctx, cfg, do.MustInvokeNamed[*pgxpool.Pool](i, namePgxPool),
+		)
+	})
+
 	do.ProvideNamed(i, nameQuerier, func(i *do.Injector) (pg.QuerierTX, error) {
 		return pg.NewQueriesTX(pg.New(do.MustInvokeNamed[*pgxpool.Pool](i, namePgxPool))), nil
+	})
+
+	do.ProvideNamed(i, nameReplicaQuerier, func(i *do.Injector) (pg.QuerierTX, error) {
+		return pg.NewQueriesTX(pg.New(do.MustInvokeNamed[*pgxpool.Pool](i, nameReplicaPgxPool))), nil
 	})
 
 	do.Provide(i, func(i *do.Injector) (*transaction.TxExecutor, error) {
@@ -75,7 +87,9 @@ func New(ctx context.Context) (*Container, error) {
 
 	do.Provide(i, func(i *do.Injector) (domain.UserRepository, error) {
 		return userRepo.New(
-			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier))
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
+			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
+		)
 	})
 
 	do.Provide(i, func(i *do.Injector) (*userUseCases.UseCases, error) {

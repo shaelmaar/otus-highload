@@ -17,6 +17,12 @@ type UserRepository interface {
 	CreateUserToken(ctx context.Context, token UserToken) (int64, error)
 	MassCreate(ctx context.Context, users []User) error
 	WithTx(tx transaction.Tx) UserRepository
+	Slave() UserSlaveRepository
+}
+
+type UserSlaveRepository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetByFirstNameLastName(ctx context.Context, firstName string, lastName string) ([]User, error)
 }
 
 type Gender string

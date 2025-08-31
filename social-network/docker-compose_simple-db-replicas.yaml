@@ -1,0 +1,123 @@
+volumes:
+  simple-db-replicas-master-vol:
+  simple-db-replicas-slave1-vol:
+  simple-db-replicas-slave2-vol:
+
+networks:
+ simple-db-replicas-net:
+   ipam:
+     driver: default
+     config:
+       - subnet: ${DOCKER_SUBNET}
+
+
+services:
+  db-master:
+    image: postgres:17-alpine
+    container_name: db-master
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      DOCKER_SUBNET: ${DOCKER_SUBNET}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - simple-db-replicas-master-vol:/var/lib/postgresql/data
+      - ./build/simple_db_replicas/master:/docker-entrypoint-initdb.d
+    networks:
+      - simple-db-replicas-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-slave1:
+    build:
+      context: ./build/simple_db_replicas/slave
+      dockerfile: Dockerfile-slave
+    container_name: db-slave1
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    depends_on:
+      db-master:
+        condition: service_healthy
+    volumes:
+      - simple-db-replicas-slave1-vol:/var/lib/postgresql/data
+    networks:
+      - simple-db-replicas-net
+    ports:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-slave2:
+    build:
+      context: ./build/simple_db_replicas/slave
+      dockerfile: Dockerfile-slave
+    container_name: db-slave2
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    depends_on:
+      db-master:
+        condition: service_healthy
+    volumes:
+      - simple-db-replicas-slave2-vol:/var/lib/postgresql/data
+    networks:
+      - simple-db-replicas-net
+    ports:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  haproxy:
+    image: haproxy:2.7
+    container_name: haproxy
+    depends_on:
+      db-master:
+        condition: service_healthy
+      db-slave1:
+        condition: service_healthy
+      db-slave2:
+        condition: service_healthy
+    volumes:
+      - ./build/simple_db_replicas/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - simple-db-replicas-net
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+
+  migrate:
+    build: .
+    depends_on:
+      - haproxy
+    env_file:
+      - .env.local
+    command: ["migrate", "up"]
+    restart: on-failure
+    networks:
+      - simple-db-replicas-net
+
+  app:
+    build: .
+    depends_on:
+      - migrate
+    env_file:
+      - .env.local
+    ports:
+      - "${APP_PORT}:8080"
+    restart: unless-stopped
+    networks:
+      - simple-db-replicas-net

@@ -78,3 +78,26 @@ func providePostgresql(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, 
 
 	return pool, nil
 }
+
+func provideReplicaPostgresql(ctx context.Context, cfg *config.Config, pgxPool *pgxpool.Pool) (*pgxpool.Pool, error) {
+	if !cfg.ReplicaDatabase.Enabled {
+		return pgxPool, nil
+	}
+
+	pgxCfg, err := cfg.ReplicaDatabase.PgxConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgreSQL: %w", err)
+	}
+
+	err = pool.Ping(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ping postgreSQL: %w", err)
+	}
+
+	return pool, nil
+}

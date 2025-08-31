@@ -59,3 +59,8 @@ func (d Database) PgxConfig() (*pgxpool.Config, error) {
 
 	return cfg, nil
 }
+
+type ReplicaDatabase struct {
+	Enabled bool `envconfig:"ENABLED"`
+	Database
+}

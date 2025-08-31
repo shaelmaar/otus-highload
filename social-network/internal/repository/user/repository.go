@@ -16,15 +16,25 @@ import (
 )
 
 type Repository struct {
-	db pg.QuerierTX
+	db         pg.QuerierTX
+	_replicaDB pg.QuerierTX
 }
 
-func New(db pg.QuerierTX) (*Repository, error) {
+func New(
+	db, replicaDB pg.QuerierTX,
+) (*Repository, error) {
 	if utils.IsNil(db) {
 		return nil, errors.New("db is nil")
 	}
 
-	return &Repository{db: db}, nil
+	if utils.IsNil(replicaDB) {
+		return nil, errors.New("replica db is nil")
+	}
+
+	return &Repository{
+		db:         db,
+		_replicaDB: replicaDB,
+	}, nil
 }
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
@@ -128,7 +138,15 @@ func (r *Repository) MassCreate(ctx context.Context, users []domain.User) error 
 
 func (r *Repository) WithTx(tx transaction.Tx) domain.UserRepository {
 	return &Repository{
-		db: r.db.WithTx(tx),
+		db:         r.db.WithTx(tx),
+		_replicaDB: nil,
+	}
+}
+
+func (r *Repository) Slave() domain.UserSlaveRepository {
+	return &Repository{
+		db:         r._replicaDB,
+		_replicaDB: nil,
 	}
 }
 

@@ -8,5 +8,5 @@ import (
 )
 
 func (uc *UseCases) Search(ctx context.Context, dto dto.SearchDTO) ([]domain.User, error) {
-	return uc.repo.GetByFirstNameLastName(ctx, dto.FirstName, dto.LastName)
+	return uc.repo.Slave().GetByFirstNameLastName(ctx, dto.FirstName, dto.LastName)
 }

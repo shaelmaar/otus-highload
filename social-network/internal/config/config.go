@@ -14,7 +14,8 @@ type Config struct {
 
 	Log Log
 
-	Database Database `envconfig:"DB"`
+	Database        Database        `envconfig:"DB"`
+	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }
