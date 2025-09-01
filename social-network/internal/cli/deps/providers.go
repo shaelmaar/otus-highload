@@ -6,11 +6,47 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/samber/do"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
+	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
+	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
+	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
+	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
+	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
+	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
+
+func provideHTTPHandlers(i *do.Injector) {
+	do.Provide(i, func(i *do.Injector) (*userUseCases.UseCases, error) {
+		return userUseCases.New(
+			do.MustInvoke[domain.UserRepository](i),
+			do.MustInvoke[*transaction.TxExecutor](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*loadTestUseCases.UseCases, error) {
+		return loadTestUseCases.New(
+			do.MustInvoke[domain.LoadTestRepository](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*userHandlers.Handlers, error) {
+		return userHandlers.NewHandlers(
+			do.MustInvoke[*userUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*loadTestHandlers.Handlers, error) {
+		return loadTestHandlers.New(
+			do.MustInvoke[*loadTestUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+}
 
 func provideConfig() (*config.Config, error) {
 	cfg, err := config.FromEnv()

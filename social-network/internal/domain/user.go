@@ -25,6 +25,10 @@ type UserSlaveRepository interface {
 	GetByFirstNameLastName(ctx context.Context, firstName string, lastName string) ([]User, error)
 }
 
+type LoadTestRepository interface {
+	Insert(ctx context.Context, id uuid.UUID, value string) error
+}
+
 type Gender string
 
 const (

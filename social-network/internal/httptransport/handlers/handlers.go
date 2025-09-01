@@ -18,16 +18,28 @@ type UserHandlers interface {
 		req serverhttp.GetUserSearchRequestObject) (serverhttp.GetUserSearchResponseObject, error)
 }
 
-type Handlers struct {
-	user UserHandlers
+type LoadTestHandlers interface {
+	Write(ctx context.Context,
+		req serverhttp.PostLoadtestWriteRequestObject,
+	) (serverhttp.PostLoadtestWriteResponseObject, error)
 }
 
-func NewHandlers(user UserHandlers) *Handlers {
+type Handlers struct {
+	user     UserHandlers
+	loadTest LoadTestHandlers
+}
+
+func NewHandlers(user UserHandlers, loadTest LoadTestHandlers) *Handlers {
 	if utils.IsNil(user) {
 		panic("user handlers are nil")
 	}
 
+	if utils.IsNil(loadTest) {
+		panic("load test handlers are nil")
+	}
+
 	return &Handlers{
-		user: user,
+		user:     user,
+		loadTest: loadTest,
 	}
 }

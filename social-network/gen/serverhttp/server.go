@@ -54,6 +54,11 @@ type N5xx struct {
 	RequestId *string `json:"request_id,omitempty"`
 }
 
+// PostLoadtestWriteJSONBody defines parameters for PostLoadtestWrite.
+type PostLoadtestWriteJSONBody struct {
+	Value string `json:"value"`
+}
+
 // PostLoginJSONBody defines parameters for PostLogin.
 type PostLoginJSONBody struct {
 	// Id Идентификатор пользователя
@@ -82,6 +87,9 @@ type GetUserSearchParams struct {
 	LastName string `form:"last_name" json:"last_name"`
 }
 
+// PostLoadtestWriteJSONRequestBody defines body for PostLoadtestWrite for application/json ContentType.
+type PostLoadtestWriteJSONRequestBody PostLoadtestWriteJSONBody
+
 // PostLoginJSONRequestBody defines body for PostLogin for application/json ContentType.
 type PostLoginJSONRequestBody PostLoginJSONBody
 
@@ -90,6 +98,9 @@ type PostUserRegisterJSONRequestBody PostUserRegisterJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (POST /loadtest/write)
+	PostLoadtestWrite(ctx echo.Context) error
 
 	// (POST /login)
 	PostLogin(ctx echo.Context) error
@@ -107,6 +118,15 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// PostLoadtestWrite converts echo context to params.
+func (w *ServerInterfaceWrapper) PostLoadtestWrite(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostLoadtestWrite(ctx)
+	return err
 }
 
 // PostLogin converts echo context to params.
@@ -196,6 +216,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/loadtest/write", wrapper.PostLoadtestWrite)
 	router.POST(baseURL+"/login", wrapper.PostLogin)
 	router.GET(baseURL+"/user/get/:id", wrapper.GetUserGetId)
 	router.POST(baseURL+"/user/register", wrapper.PostUserRegister)
@@ -219,6 +240,58 @@ type N5xxJSONResponse struct {
 	}
 
 	Headers N5xxResponseHeaders
+}
+
+type PostLoadtestWriteRequestObject struct {
+	Body *PostLoadtestWriteJSONRequestBody
+}
+
+type PostLoadtestWriteResponseObject interface {
+	VisitPostLoadtestWriteResponse(w http.ResponseWriter) error
+}
+
+type PostLoadtestWrite204Response struct {
+}
+
+func (response PostLoadtestWrite204Response) VisitPostLoadtestWriteResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type PostLoadtestWrite500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PostLoadtestWrite500JSONResponse) VisitPostLoadtestWriteResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PostLoadtestWrite503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PostLoadtestWrite503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PostLoadtestWrite503ResponseHeaders
+}
+
+func (response PostLoadtestWrite503JSONResponse) VisitPostLoadtestWriteResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
 type PostLoginRequestObject struct {
@@ -488,6 +561,9 @@ func (response GetUserSearch503JSONResponse) VisitGetUserSearchResponse(w http.R
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (POST /loadtest/write)
+	PostLoadtestWrite(ctx context.Context, request PostLoadtestWriteRequestObject) (PostLoadtestWriteResponseObject, error)
+
 	// (POST /login)
 	PostLogin(ctx context.Context, request PostLoginRequestObject) (PostLoginResponseObject, error)
 
@@ -511,6 +587,35 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// PostLoadtestWrite operation middleware
+func (sh *strictHandler) PostLoadtestWrite(ctx echo.Context) error {
+	var request PostLoadtestWriteRequestObject
+
+	var body PostLoadtestWriteJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostLoadtestWrite(ctx.Request().Context(), request.(PostLoadtestWriteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostLoadtestWrite")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostLoadtestWriteResponseObject); ok {
+		return validResponse.VisitPostLoadtestWriteResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // PostLogin operation middleware

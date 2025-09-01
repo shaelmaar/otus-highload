@@ -58,6 +58,12 @@ func (s *QueriesTX) WithTx(tx pgx.Tx) QuerierTX {
 	}
 }
 
+func (_d *QueriesTX) LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.LoadTestInsert(ctx, arg)
+}
+
 func (_d *QueriesTX) UserCreate(ctx context.Context, arg UserCreateParams) (err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()

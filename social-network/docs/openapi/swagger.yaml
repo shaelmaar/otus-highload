@@ -108,6 +108,7 @@ paths:
           $ref: '#/components/responses/5xx'
         '503':
           $ref: '#/components/responses/5xx'
+
   /user/search:
     get:
       description: Поиск анкет
@@ -139,6 +140,27 @@ paths:
                   $ref: '#/components/schemas/User'
         '400':
           description: Невалидные данные
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
+  /loadtest/write:
+    post:
+      description: Запись в бд для нагрузочного тестирования
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - value
+              properties:
+                value:
+                  type: string
+      responses:
+        '204':
+          description: Успешная запись
         '500':
           $ref: '#/components/responses/5xx'
         '503':

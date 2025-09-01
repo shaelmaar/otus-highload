@@ -58,6 +58,11 @@ func (ns NullGender) Value() (driver.Value, error) {
 	return string(ns.Gender), nil
 }
 
+type LoadTest struct {
+	ID    uuid.UUID
+	Value string
+}
+
 // Пользователь
 type User struct {
 	ID uuid.UUID

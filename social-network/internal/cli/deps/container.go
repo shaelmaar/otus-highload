@@ -13,11 +13,12 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
+	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
+	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
 	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
-	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
 
@@ -92,19 +93,13 @@ func New(ctx context.Context) (*Container, error) {
 		)
 	})
 
-	do.Provide(i, func(i *do.Injector) (*userUseCases.UseCases, error) {
-		return userUseCases.New(
-			do.MustInvoke[domain.UserRepository](i),
-			do.MustInvoke[*transaction.TxExecutor](i),
+	do.Provide(i, func(i *do.Injector) (domain.LoadTestRepository, error) {
+		return loadTestRepo.New(
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 		)
 	})
 
-	do.Provide[*userHandlers.Handlers](i, func(i *do.Injector) (*userHandlers.Handlers, error) {
-		return userHandlers.NewHandlers(
-			do.MustInvoke[*userUseCases.UseCases](i),
-			do.MustInvoke[*zap.Logger](i),
-		)
-	})
+	provideHTTPHandlers(i)
 
 	//nolint:contextcheck // контекст тут никак не передается.
 	do.Provide(i, func(i *do.Injector) (*server.Server, error) {
@@ -113,6 +108,7 @@ func New(ctx context.Context) (*Container, error) {
 		httpServer, err := server.NewStrict(
 			handlers.NewHandlers(
 				do.MustInvoke[*userHandlers.Handlers](i),
+				do.MustInvoke[*loadTestHandlers.Handlers](i),
 			),
 			&server.Options{
 				Debug:       false,
