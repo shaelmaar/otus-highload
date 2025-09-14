@@ -26,6 +26,18 @@ func NewServeCommand(container *deps.Container) *cobra.Command {
 
 			serverLogger.Info(fmt.Sprintf("starting service %s", cfg.ServiceName))
 
+			debugServer := container.DebugServer()
+
+			go func() {
+				debugAddr := fmt.Sprintf(":%d", cfg.DebugServerListenPort)
+
+				serverLogger.Info("starting debug server", zap.String("address", debugAddr))
+
+				if err := debugServer.Start(debugAddr); !errors.Is(err, http.ErrServerClosed) {
+					serverLogger.Error("failed to start debug server", zap.Error(err))
+				}
+			}()
+
 			httpServer := container.HTTPServer()
 
 			go func() {

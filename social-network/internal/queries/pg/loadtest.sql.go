@@ -11,6 +11,16 @@ import (
 	"github.com/google/uuid"
 )
 
+const loadTestDelete = `-- name: LoadTestDelete :exec
+delete from load_test
+where id = $1
+`
+
+func (q *Queries) LoadTestDelete(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, loadTestDelete, id)
+	return err
+}
+
 const loadTestInsert = `-- name: LoadTestInsert :exec
 insert into load_test(id, value)
 values ( $1, $2)

@@ -7,15 +7,18 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
+	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
+	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
 	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
@@ -27,6 +30,7 @@ const (
 	nameReplicaPgxPool = "replicaPgxPool"
 	nameQuerier        = "querier"
 	nameReplicaQuerier = "replicaQuerier"
+	nameDebugServer    = "debugServer"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -97,6 +101,18 @@ func New(ctx context.Context) (*Container, error) {
 		return loadTestRepo.New(
 			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*metrics.Metrics, error) {
+		return metrics.NewMetrics(), nil
+	})
+
+	do.ProvideNamed(i, nameDebugServer, func(i *do.Injector) (*echo.Echo, error) {
+		debugServer := debugserver.New()
+
+		c.addShutdown(nameDebugServer, debugServer.Shutdown)
+
+		return debugServer, nil
 	})
 
 	provideHTTPHandlers(i)

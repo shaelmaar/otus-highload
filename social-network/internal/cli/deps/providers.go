@@ -14,6 +14,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
+	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
@@ -30,6 +31,9 @@ func provideHTTPHandlers(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*loadTestUseCases.UseCases, error) {
 		return loadTestUseCases.New(
 			do.MustInvoke[domain.LoadTestRepository](i),
+			do.MustInvoke[*transaction.TxExecutor](i),
+			do.MustInvoke[*metrics.Metrics](i),
+			do.MustInvoke[*zap.Logger](i),
 		)
 	})
 

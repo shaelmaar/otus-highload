@@ -1,16 +1,28 @@
-.PHONY: run stop run-simple-db-replicas stop-simple-db-replicas generate-server lint generate-sql
+.PHONY: run stop run-simple-db-replicas stop-simple-db-replicas run-patroni-db-replicas stop-patroni-db-replicas run-monitoring stop-monitoring generate-server lint generate-sql
 
 run:
 	docker-compose --env-file .env.compose up  --build -d --force-recreate
 
 stop:
-	docker-compose down --remove-orphans
+	docker-compose --env-file .env.compose up down --remove-orphans
 
 run-simple-db-replicas:
 	docker-compose -f docker-compose_simple-db-replicas.yaml --env-file .env.compose up  --build -d --force-recreate
 
 stop-simple-db-replicas:
-	docker-compose -f docker-compose_simple-db-replicas.yaml down --remove-orphans
+	docker-compose -f docker-compose_simple-db-replicas.yaml --env-file .env.compose down --remove-orphans
+
+run-patroni-db-replicas:
+	docker-compose -f docker-compose_patroni-db-replicas.yaml --env-file .env.compose up  --build -d --force-recreate
+
+stop-patroni-db-replicas:
+	docker-compose -f docker-compose_patroni-db-replicas.yaml --env-file .env.compose down --remove-orphans -v
+
+run-monitoring:
+	docker-compose -f docker-compose_mon.yaml  up  --build -d --force-recreate
+
+stop-monitoring:
+	docker-compose -f docker-compose_mon.yaml  down --remove-orphans
 
 build-docker-oapi:
 	@docker build -f Dockerfile-oapi -t otus-highload-oapi-gen .

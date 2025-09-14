@@ -1,4 +1,3 @@
-# Dockerfile.slave
 FROM postgres:17-alpine
 
 COPY slave-entrypoint.sh /usr/local/bin/

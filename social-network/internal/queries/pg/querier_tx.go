@@ -58,6 +58,12 @@ func (s *QueriesTX) WithTx(tx pgx.Tx) QuerierTX {
 	}
 }
 
+func (_d *QueriesTX) LoadTestDelete(ctx context.Context, id uuid.UUID) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.LoadTestDelete(ctx, id)
+}
+
 func (_d *QueriesTX) LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) (err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()

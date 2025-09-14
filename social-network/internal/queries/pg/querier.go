@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	LoadTestDelete(ctx context.Context, id uuid.UUID) error
 	LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) error
 	UserCreate(ctx context.Context, arg UserCreateParams) error
 	UserGetByID(ctx context.Context, id uuid.UUID) (User, error)

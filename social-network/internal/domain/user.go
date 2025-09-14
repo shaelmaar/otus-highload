@@ -27,6 +27,8 @@ type UserSlaveRepository interface {
 
 type LoadTestRepository interface {
 	Insert(ctx context.Context, id uuid.UUID, value string) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	WithTx(tx transaction.Tx) LoadTestRepository
 }
 
 type Gender string

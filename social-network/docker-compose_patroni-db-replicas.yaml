@@ -1,0 +1,96 @@
+volumes:
+  patroni1-db:
+  patroni2-db:
+  patroni3-db:
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379"
+
+  patroni1:
+    build:
+      context: ./build/patroni_db_replicas
+    container_name: patroni1
+    depends_on:
+      - etcd
+    ports:
+      - "5433:5432"
+      - "8008:8008"
+    volumes:
+      - patroni1-db:/var/lib/postgresql/data:rw
+      - ./build/patroni_db_replicas/patroni1.yaml:/etc/patroni.yaml:ro
+      - ./build/patroni_db_replicas/init:/etc/patroni/init
+
+  patroni2:
+    build:
+      context: ./build/patroni_db_replicas
+    container_name: patroni2
+    depends_on:
+      - etcd
+    ports:
+      - "5434:5432"
+      - "8009:8008"
+    volumes:
+      - patroni2-db:/var/lib/postgresql/data:rw
+      - ./build/patroni_db_replicas/patroni2.yaml:/etc/patroni.yaml:ro
+      - ./build/patroni_db_replicas/init:/etc/patroni/init
+
+  patroni3:
+    build:
+      context: ./build/patroni_db_replicas
+    container_name: patroni3
+    depends_on:
+      - etcd
+    ports:
+      - "5435:5432"
+      - "8010:8008"
+    volumes:
+      - patroni3-db:/var/lib/postgresql/data:rw
+      - ./build/patroni_db_replicas/patroni3.yaml:/etc/patroni.yaml:ro
+      - ./build/patroni_db_replicas/init:/etc/patroni/init
+
+  haproxy:
+    image: haproxy:2.7
+    container_name: haproxy
+    depends_on:
+      - patroni1
+      - patroni2
+      - patroni3
+    volumes:
+      - ./build/patroni_db_replicas/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./build/patroni_db_replicas/haproxy/healthcheck.sh:/usr/local/etc/haproxy/check.sh:ro
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    healthcheck:
+      test: [ "CMD", "/usr/local/etc/haproxy/check.sh" ]
+      interval: 5s
+      retries: 20
+      timeout: 2s
+
+  migrate:
+    build: .
+    depends_on:
+      haproxy:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    command: ["migrate", "up"]
+    restart: on-failure
+
+  app:
+    build: .
+    depends_on:
+      - migrate
+    env_file:
+      - .env.local
+    ports:
+      - "${APP_PORT}:8080"
+      - "${APP_DEBUG_PORT}:8081"
+    restart: unless-stopped
+

@@ -1,0 +1,47 @@
+scope: pg-cluster
+name: patroni1
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: patroni1:8008
+
+etcd3:
+  hosts: etcd:2379
+
+bootstrap:
+  dcs:
+    ttl: 10
+    loop_wait: 5
+    retry_timeout: 5
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: true
+    synchronous_mode_strict: true
+    postgresql:
+      parameters:
+        max_connections: 100
+        shared_buffers: 256MB
+        wal_level: replica
+        hot_standby: "on"
+        synchronous_commit: on
+        synchronous_standby_names: 'ANY 1 (patroni1, patroni2, patroni3)'
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  post_bootstrap: /etc/patroni/init/init.sh
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: patroni1:5432
+  data_dir: /var/lib/postgresql/data
+  authentication:
+    superuser:
+      username: postgres
+      password: postgres
+    replication:
+      username: replicator
+      password: repl_secret
+  pg_hba:
+    - local all all md5
+    - host all all 0.0.0.0/0 md5
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all ::0/0 md5

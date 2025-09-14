@@ -7,7 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
+	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
@@ -37,4 +39,19 @@ func (r *Repository) Insert(ctx context.Context, id uuid.UUID, value string) err
 	}
 
 	return nil
+}
+
+func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+	err := r.db.LoadTestDelete(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete load test value in db: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) WithTx(tx transaction.Tx) domain.LoadTestRepository {
+	return &Repository{
+		db: r.db.WithTx(tx),
+	}
 }

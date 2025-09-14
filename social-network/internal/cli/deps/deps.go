@@ -2,6 +2,7 @@ package deps
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
 	"go.uber.org/zap"
 
@@ -24,6 +25,10 @@ func (c *Container) Logger() *zap.Logger {
 
 func (c *Container) HTTPServer() *server.Server {
 	return do.MustInvoke[*server.Server](c.i)
+}
+
+func (c *Container) DebugServer() *echo.Echo {
+	return do.MustInvokeNamed[*echo.Echo](c.i, nameDebugServer)
 }
 
 func (c *Container) UserUseCases() *userUseCases.UseCases {
