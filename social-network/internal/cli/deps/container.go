@@ -13,15 +13,14 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
-	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
+	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
-	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
-	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
+	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
 
@@ -90,19 +89,6 @@ func New(ctx context.Context) (*Container, error) {
 		)
 	})
 
-	do.Provide(i, func(i *do.Injector) (domain.UserRepository, error) {
-		return userRepo.New(
-			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
-			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
-		)
-	})
-
-	do.Provide(i, func(i *do.Injector) (domain.LoadTestRepository, error) {
-		return loadTestRepo.New(
-			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
-		)
-	})
-
 	do.Provide(i, func(i *do.Injector) (*metrics.Metrics, error) {
 		return metrics.NewMetrics(), nil
 	})
@@ -115,6 +101,12 @@ func New(ctx context.Context) (*Container, error) {
 		return debugServer, nil
 	})
 
+	provideRepositories(i)
+
+	provideAuthService(i, cfg)
+
+	provideUseCases(i)
+
 	provideHTTPHandlers(i)
 
 	//nolint:contextcheck // контекст тут никак не передается.
@@ -124,12 +116,14 @@ func New(ctx context.Context) (*Container, error) {
 		httpServer, err := server.NewStrict(
 			handlers.NewHandlers(
 				do.MustInvoke[*userHandlers.Handlers](i),
+				do.MustInvoke[*postHandlers.Handlers](i),
 				do.MustInvoke[*loadTestHandlers.Handlers](i),
 			),
 			&server.Options{
 				Debug:       false,
 				ServiceName: cfg.ServiceName,
 				Logger:      logger,
+				AuthService: do.MustInvoke[*auth.Service](i),
 			},
 		)
 		if err != nil {

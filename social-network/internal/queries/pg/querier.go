@@ -13,10 +13,13 @@ import (
 type Querier interface {
 	LoadTestDelete(ctx context.Context, id uuid.UUID) error
 	LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) error
+	PostCreate(ctx context.Context, arg PostCreateParams) error
+	PostDelete(ctx context.Context, id uuid.UUID) error
+	PostGetByID(ctx context.Context, id uuid.UUID) (Post, error)
+	PostGetWithLockByID(ctx context.Context, id uuid.UUID) (Post, error)
+	PostUpdate(ctx context.Context, arg PostUpdateParams) error
 	UserCreate(ctx context.Context, arg UserCreateParams) error
 	UserGetByID(ctx context.Context, id uuid.UUID) (User, error)
-	UserTokenCreate(ctx context.Context, arg UserTokenCreateParams) (int64, error)
-	UserTokenDeleteByUserID(ctx context.Context, userID uuid.UUID) error
 	UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) ([]User, error)
 	UsersMassCreate(ctx context.Context, arg []UsersMassCreateParams) (int64, error)
 }

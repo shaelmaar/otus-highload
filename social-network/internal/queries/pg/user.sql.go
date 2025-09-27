@@ -67,35 +67,6 @@ func (q *Queries) UserGetByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
-const userTokenCreate = `-- name: UserTokenCreate :one
-insert into user_token(user_id, token, expires_at)
-values ($1, $2, $3)
-returning id
-`
-
-type UserTokenCreateParams struct {
-	UserID    uuid.UUID
-	Token     string
-	ExpiresAt pgtype.Timestamptz
-}
-
-func (q *Queries) UserTokenCreate(ctx context.Context, arg UserTokenCreateParams) (int64, error) {
-	row := q.db.QueryRow(ctx, userTokenCreate, arg.UserID, arg.Token, arg.ExpiresAt)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
-}
-
-const userTokenDeleteByUserID = `-- name: UserTokenDeleteByUserID :exec
-delete from user_token
-where user_id = $1
-`
-
-func (q *Queries) UserTokenDeleteByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, userTokenDeleteByUserID, userID)
-	return err
-}
-
 const usersGetByFirstNameSecondName = `-- name: UsersGetByFirstNameSecondName :many
 select id, password_hash, first_name, second_name, birth_date, gender, biography, city, created_at, updated_at from "user"
 where first_name ilike '%' || $1::text || '%'

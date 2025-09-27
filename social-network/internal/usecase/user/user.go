@@ -9,15 +9,21 @@ import (
 
 type UseCases struct {
 	repo domain.UserRepository
+	auth AuthService
 	tx   TxExecutor
 }
 
 func New(
 	repo domain.UserRepository,
+	auth AuthService,
 	tx TxExecutor,
 ) (*UseCases, error) {
 	if utils.IsNil(repo) {
 		return nil, errors.New("user repository is nil")
+	}
+
+	if utils.IsNil(auth) {
+		return nil, errors.New("auth service is nil")
 	}
 
 	if utils.IsNil(tx) {
@@ -26,6 +32,7 @@ func New(
 
 	return &UseCases{
 		repo: repo,
+		auth: auth,
 		tx:   tx,
 	}, nil
 }

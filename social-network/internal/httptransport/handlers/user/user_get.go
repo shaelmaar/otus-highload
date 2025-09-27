@@ -20,7 +20,7 @@ func (h *Handlers) GetByID(
 ) (serverhttp.GetUserGetIdResponseObject, error) {
 	userID, err := uuid.Parse(req.Id)
 	if err != nil {
-		//nolint:nilerr // пустой ответ в контрактах.
+		//nolint:nilerr // возвращается 400 ответ.
 		return serverhttp.GetUserGetId400Response{}, nil
 	}
 

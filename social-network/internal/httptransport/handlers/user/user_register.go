@@ -19,7 +19,7 @@ func (h *Handlers) Register(
 		return serverhttp.PostUserRegister400Response{}, nil
 	}
 
-	user, err := h.useCases.Register(ctx, dto.RegisterDTO{
+	user, err := h.useCases.Register(ctx, dto.Register{
 		Password:   *req.Body.Password,
 		Name:       *req.Body.FirstName,
 		SecondName: *req.Body.SecondName,

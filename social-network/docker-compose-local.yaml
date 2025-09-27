@@ -1,0 +1,48 @@
+volumes:
+  social-network-local-db:
+  social-network-local-valkey:
+
+networks:
+  social-network-local-net:
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - social-network-local-db:/var/lib/postgresql/data
+      - ./postgresql/ext-trgm.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - social-network-local-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - social-network-local-valkey:/data
+    networks:
+      - social-network-local-net
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD}
+      --save 60 1
+      --loglevel notice
+      --protected-mode no
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3

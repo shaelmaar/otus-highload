@@ -13,8 +13,6 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetByFirstNameLastName(ctx context.Context, firstName string, lastName string) ([]User, error)
 	Create(ctx context.Context, user User) error
-	DeleteUserTokens(ctx context.Context, userID uuid.UUID) error
-	CreateUserToken(ctx context.Context, token UserToken) (int64, error)
 	MassCreate(ctx context.Context, users []User) error
 	WithTx(tx transaction.Tx) UserRepository
 	Slave() UserSlaveRepository
@@ -47,12 +45,4 @@ type User struct {
 	Gender       Gender
 	Biography    string
 	City         string
-}
-
-type UserToken struct {
-	ID        int64
-	UserID    uuid.UUID
-	Token     string
-	ExpiresAt time.Time
-	CreatedAt time.Time
 }

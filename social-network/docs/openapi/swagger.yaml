@@ -145,6 +145,121 @@ paths:
         '503':
           $ref: '#/components/responses/5xx'
 
+  /post/create:
+    post:
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  $ref: '#/components/schemas/PostText'
+      responses:
+        '200':
+          description: Успешно создан пост
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostId'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
+  /post/update:
+    put:
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - text
+              properties:
+                id:
+                  $ref: '#/components/schemas/PostId'
+                text:
+                  $ref: '#/components/schemas/PostText'
+      responses:
+        '200':
+          description: Успешно изменен пост
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          description: Доступ к посту запрещен
+        '404':
+          description: Пост не найден
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
+  /post/delete/{id}:
+    put:
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          schema:
+            $ref: '#/components/schemas/PostId'
+          required: true
+          in: path
+      responses:
+        '200':
+          description: Успешно удален пост
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          description: Доступ к посту запрещен
+        '404':
+          description: Пост не найден
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
+  /post/get/{id}:
+    get:
+      parameters:
+        - name: id
+          schema:
+            $ref: '#/components/schemas/PostId'
+          required: true
+          in: path
+      responses:
+        '200':
+          description: Успешно получен пост
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          description: Пост не найден
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
   /loadtest/write:
     post:
       description: Запись в бд для нагрузочного тестирования
@@ -234,6 +349,30 @@ components:
           type: string
           example: Москва
           description: Город
+
+    PostId:
+      type: string
+      description: Идентификатор поста
+      example: 1d535fd6-7521-4cb1-aa6d-031be7123c4d
+
+    PostText:
+      type: string
+      description: Текст поста
+      example: >-
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+        tempor incididunt ut labore et dolore magna aliqua. Lectus mauris
+        ultrices eros in cursus turpis massa.
+
+    Post:
+      type: object
+      description: Пост пользователя
+      properties:
+        id:
+          $ref: '#/components/schemas/PostId'
+        text:
+          $ref: '#/components/schemas/PostText'
+        author_user_id:
+          $ref: '#/components/schemas/UserId'
 
   securitySchemes:
     bearerAuth:

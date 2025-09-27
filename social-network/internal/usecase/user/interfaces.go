@@ -13,3 +13,7 @@ type TxExecutor interface {
 		rollbackFn func(ctx context.Context),
 	) error
 }
+
+type AuthService interface {
+	GenerateToken(userID string) (string, error)
+}

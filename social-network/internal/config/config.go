@@ -18,6 +18,8 @@ type Config struct {
 	Database        Database        `envconfig:"DB"`
 	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
 
+	Auth Auth `envconfig:"AUTH"`
+
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }
 
@@ -30,6 +32,10 @@ func FromEnv() (*Config, error) {
 
 	if err := envconfig.Process("", cfg); err != nil {
 		return nil, fmt.Errorf("error while parse env config: %w", err)
+	}
+
+	if err := cfg.Auth.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid auth config: %w", err)
 	}
 
 	return cfg, nil

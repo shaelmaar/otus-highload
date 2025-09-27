@@ -18,6 +18,17 @@ type UserHandlers interface {
 		req serverhttp.GetUserSearchRequestObject) (serverhttp.GetUserSearchResponseObject, error)
 }
 
+type PostHandlers interface {
+	Create(ctx context.Context,
+		req serverhttp.PostPostCreateRequestObject) (serverhttp.PostPostCreateResponseObject, error)
+	GetByID(ctx context.Context,
+		req serverhttp.GetPostGetIdRequestObject) (serverhttp.GetPostGetIdResponseObject, error)
+	Update(ctx context.Context,
+		req serverhttp.PutPostUpdateRequestObject) (serverhttp.PutPostUpdateResponseObject, error)
+	Delete(ctx context.Context,
+		req serverhttp.PutPostDeleteIdRequestObject) (serverhttp.PutPostDeleteIdResponseObject, error)
+}
+
 type LoadTestHandlers interface {
 	Write(ctx context.Context,
 		req serverhttp.PostLoadtestWriteRequestObject,
@@ -26,12 +37,21 @@ type LoadTestHandlers interface {
 
 type Handlers struct {
 	user     UserHandlers
+	post     PostHandlers
 	loadTest LoadTestHandlers
 }
 
-func NewHandlers(user UserHandlers, loadTest LoadTestHandlers) *Handlers {
+func NewHandlers(
+	user UserHandlers,
+	post PostHandlers,
+	loadTest LoadTestHandlers,
+) *Handlers {
 	if utils.IsNil(user) {
 		panic("user handlers are nil")
+	}
+
+	if utils.IsNil(post) {
+		panic("post handlers are nil")
 	}
 
 	if utils.IsNil(loadTest) {
@@ -40,6 +60,7 @@ func NewHandlers(user UserHandlers, loadTest LoadTestHandlers) *Handlers {
 
 	return &Handlers{
 		user:     user,
+		post:     post,
 		loadTest: loadTest,
 	}
 }

@@ -22,11 +22,11 @@ func (h *Handlers) Login(
 
 	userID, err := uuid.Parse(*req.Body.Id)
 	if err != nil {
-		//nolint:nilerr // пустой ответ в контрактах.
+		//nolint:nilerr // возвращается 400 ответ.
 		return serverhttp.PostLogin400Response{}, nil
 	}
 
-	token, err := h.useCases.Login(ctx, dto.LoginDTO{
+	token, err := h.useCases.Login(ctx, dto.Login{
 		UserID:   userID,
 		Password: *req.Body.Password,
 	})
@@ -44,5 +44,5 @@ func (h *Handlers) Login(
 		}, nil
 	}
 
-	return serverhttp.PostLogin200JSONResponse{Token: &token.Token}, nil
+	return serverhttp.PostLogin200JSONResponse{Token: &token}, nil
 }

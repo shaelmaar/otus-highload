@@ -63,6 +63,18 @@ type LoadTest struct {
 	Value string
 }
 
+// посты пользователей
+type Post struct {
+	// идентификатор поста
+	ID uuid.UUID
+	// содержимое поста
+	Content string
+	// идентификатор пользователя автора поста
+	AuthorUserID uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    pgtype.Timestamptz
+}
+
 // Пользователь
 type User struct {
 	ID uuid.UUID
@@ -82,16 +94,4 @@ type User struct {
 	City      string
 	CreatedAt time.Time
 	UpdatedAt pgtype.Timestamptz
-}
-
-// токен пользователя
-type UserToken struct {
-	ID int64
-	// идентификатор пользователя
-	UserID uuid.UUID
-	// токен
-	Token string
-	// время срока годности токена
-	ExpiresAt pgtype.Timestamptz
-	CreatedAt time.Time
 }

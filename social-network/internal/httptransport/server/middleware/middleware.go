@@ -6,8 +6,9 @@ import (
 )
 
 type Options struct {
-	ServiceName string
-	Logger      *zap.Logger
+	ServiceName    string
+	Logger         *zap.Logger
+	TokenValidator func(tokenString string) (string, error)
 
 	RequestIDGenerator func() string
 
@@ -21,6 +22,7 @@ func Use(e *echo.Echo, opt *Options) {
 	e.Use(
 		recovery(),
 		requestIDWithConfig(requestIDConfig{Skipper: opt.RequestIDSkipper}),
+		authWithConfig(authConfig{tokenValidator: opt.TokenValidator}),
 		zapLoggerMiddleware(zapLoggerConfig{
 			ServiceName: opt.ServiceName,
 			Skipper:     opt.LoggerSkipper,

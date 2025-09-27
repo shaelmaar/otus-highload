@@ -21,9 +21,14 @@ type Server struct {
 	Logger *zap.Logger
 }
 
+type AuthService interface {
+	ValidateToken(tokenString string) (string, error)
+}
+
 type Options struct {
 	ServiceName string
 	Debug       bool
+	AuthService AuthService
 	Logger      *zap.Logger
 }
 
@@ -101,6 +106,7 @@ func New(si serverhttp.ServerInterface, opt *Options, optionalFn ...OptionalFunc
 	middleware.Use(e, &middleware.Options{
 		ServiceName:        opt.ServiceName,
 		Logger:             opt.Logger,
+		TokenValidator:     opt.AuthService.ValidateToken,
 		RequestIDGenerator: nil,
 		RequestIDSkipper:   optionalOpts.RequestIDSkipper,
 		MetricsSkipper:     optionalOpts.MetricsSkipper,

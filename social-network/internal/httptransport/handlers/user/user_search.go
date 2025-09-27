@@ -14,7 +14,7 @@ import (
 func (h *Handlers) UserSearch(
 	ctx context.Context, req serverhttp.GetUserSearchRequestObject,
 ) (serverhttp.GetUserSearchResponseObject, error) {
-	users, err := h.useCases.Search(ctx, dto.SearchDTO{
+	users, err := h.useCases.Search(ctx, dto.Search{
 		FirstName: req.Params.FirstName,
 		LastName:  req.Params.LastName,
 	})

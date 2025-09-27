@@ -8,15 +8,6 @@ values ( @id, @password_hash, @first_name, @second_name,
 select * from "user"
 where id = @id;
 
--- name: UserTokenCreate :one
-insert into user_token(user_id, token, expires_at)
-values (@user_id, @token, @expires_at)
-returning id;
-
--- name: UserTokenDeleteByUserID :exec
-delete from user_token
-where user_id = @user_id;
-
 -- name: UsersGetByFirstNameSecondName :many
 select * from "user"
 where first_name ilike '%' || @first_name::text || '%'

@@ -6,12 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type LoginDTO struct {
+type Login struct {
 	UserID   uuid.UUID
 	Password string
 }
 
-type RegisterDTO struct {
+type Register struct {
 	Password   string
 	Name       string
 	SecondName string
@@ -20,7 +20,7 @@ type RegisterDTO struct {
 	City       string
 }
 
-type SearchDTO struct {
+type Search struct {
 	FirstName string
 	LastName  string
 }

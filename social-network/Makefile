@@ -1,10 +1,17 @@
-.PHONY: run stop run-simple-db-replicas stop-simple-db-replicas run-patroni-db-replicas stop-patroni-db-replicas run-monitoring stop-monitoring generate-server lint generate-sql
+.PHONY: run stop run-local-infra stop-local-infra generate-server lint generate-sql
+.PHONY: run-simple-db-replicas stop-simple-db-replicas run-patroni-db-replicas stop-patroni-db-replicas run-monitoring stop-monitoring
 
 run:
 	docker-compose --env-file .env.compose up  --build -d --force-recreate
 
 stop:
-	docker-compose --env-file .env.compose up down --remove-orphans
+	docker-compose --env-file .env.compose down --remove-orphans
+
+run-local-infra:
+	docker-compose -f docker-compose-local.yaml --env-file .env.compose up  --build -d --force-recreate
+
+stop-local-infra:
+	docker-compose -f docker-compose-local.yaml --env-file .env.compose down --remove-orphans
 
 run-simple-db-replicas:
 	docker-compose -f docker-compose_simple-db-replicas.yaml --env-file .env.compose up  --build -d --force-recreate

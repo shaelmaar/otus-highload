@@ -1,9 +1,10 @@
 volumes:
   social-network-db:
+  social-network-valkey:
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -19,6 +20,26 @@ services:
       timeout: 5s
       retries: 5
 
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - social-network-valkey:/data
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD}
+      --save 60 1
+      --loglevel notice
+      --protected-mode no
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   migrate:
     build: .
     depends_on:
@@ -33,6 +54,7 @@ services:
     build: .
     depends_on:
       - migrate
+      - valkey
     env_file:
       - .env.local
     ports:

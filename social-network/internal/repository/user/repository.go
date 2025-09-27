@@ -86,32 +86,6 @@ func (r *Repository) Create(ctx context.Context, user domain.User) error {
 	return nil
 }
 
-func (r *Repository) DeleteUserTokens(ctx context.Context, userID uuid.UUID) error {
-	err := r.db.UserTokenDeleteByUserID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to delete user token by user id in db: %w", err)
-	}
-
-	return nil
-}
-
-func (r *Repository) CreateUserToken(ctx context.Context, token domain.UserToken) (int64, error) {
-	id, err := r.db.UserTokenCreate(ctx, pg.UserTokenCreateParams{
-		UserID: token.UserID,
-		Token:  token.Token,
-		ExpiresAt: pgtype.Timestamptz{
-			Time:             token.ExpiresAt,
-			InfinityModifier: pgtype.Finite,
-			Valid:            !token.ExpiresAt.IsZero(),
-		},
-	})
-	if err != nil {
-		return 0, fmt.Errorf("failed to create user token in db: %w", err)
-	}
-
-	return id, nil
-}
-
 func (r *Repository) MassCreate(ctx context.Context, users []domain.User) error {
 	_, err := r.db.UsersMassCreate(ctx, utils.MapSlice(users, func(u domain.User) pg.UsersMassCreateParams {
 		return pg.UsersMassCreateParams{

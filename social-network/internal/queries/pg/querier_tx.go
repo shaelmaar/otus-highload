@@ -70,6 +70,36 @@ func (_d *QueriesTX) LoadTestInsert(ctx context.Context, arg LoadTestInsertParam
 	return _d.base.LoadTestInsert(ctx, arg)
 }
 
+func (_d *QueriesTX) PostCreate(ctx context.Context, arg PostCreateParams) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.PostCreate(ctx, arg)
+}
+
+func (_d *QueriesTX) PostDelete(ctx context.Context, id uuid.UUID) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.PostDelete(ctx, id)
+}
+
+func (_d *QueriesTX) PostGetByID(ctx context.Context, id uuid.UUID) (p1 Post, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.PostGetByID(ctx, id)
+}
+
+func (_d *QueriesTX) PostGetWithLockByID(ctx context.Context, id uuid.UUID) (p1 Post, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.PostGetWithLockByID(ctx, id)
+}
+
+func (_d *QueriesTX) PostUpdate(ctx context.Context, arg PostUpdateParams) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.PostUpdate(ctx, arg)
+}
+
 func (_d *QueriesTX) UserCreate(ctx context.Context, arg UserCreateParams) (err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()
@@ -80,18 +110,6 @@ func (_d *QueriesTX) UserGetByID(ctx context.Context, id uuid.UUID) (u1 User, er
 	_d.mx.Lock()
 	defer _d.mx.Unlock()
 	return _d.base.UserGetByID(ctx, id)
-}
-
-func (_d *QueriesTX) UserTokenCreate(ctx context.Context, arg UserTokenCreateParams) (i1 int64, err error) {
-	_d.mx.Lock()
-	defer _d.mx.Unlock()
-	return _d.base.UserTokenCreate(ctx, arg)
-}
-
-func (_d *QueriesTX) UserTokenDeleteByUserID(ctx context.Context, userID uuid.UUID) (err error) {
-	_d.mx.Lock()
-	defer _d.mx.Unlock()
-	return _d.base.UserTokenDeleteByUserID(ctx, userID)
 }
 
 func (_d *QueriesTX) UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) (ua1 []User, err error) {

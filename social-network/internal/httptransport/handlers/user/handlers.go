@@ -13,10 +13,10 @@ import (
 )
 
 type UseCases interface {
-	Login(ctx context.Context, dto dto.LoginDTO) (domain.UserToken, error)
-	Register(ctx context.Context, dto dto.RegisterDTO) (domain.User, error)
+	Login(ctx context.Context, dto dto.Login) (string, error)
+	Register(ctx context.Context, dto dto.Register) (domain.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
-	Search(ctx context.Context, dto dto.SearchDTO) ([]domain.User, error)
+	Search(ctx context.Context, dto dto.Search) ([]domain.User, error)
 }
 
 type Handlers struct {
@@ -24,7 +24,7 @@ type Handlers struct {
 	logger   *zap.Logger
 }
 
-func NewHandlers(useCases UseCases, logger *zap.Logger) (*Handlers, error) {
+func New(useCases UseCases, logger *zap.Logger) (*Handlers, error) {
 	if utils.IsNil(useCases) {
 		return nil, errors.New("user use cases are nil")
 	}

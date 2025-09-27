@@ -15,8 +15,30 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
 // BirthDate Дата рождения
 type BirthDate = openapi_types.Date
+
+// Post Пост пользователя
+type Post struct {
+	// AuthorUserId Идентификатор пользователя
+	AuthorUserId *UserId `json:"author_user_id,omitempty"`
+
+	// Id Идентификатор поста
+	Id *PostId `json:"id,omitempty"`
+
+	// Text Текст поста
+	Text *PostText `json:"text,omitempty"`
+}
+
+// PostId Идентификатор поста
+type PostId = string
+
+// PostText Текст поста
+type PostText = string
 
 // User defines model for User.
 type User struct {
@@ -66,6 +88,21 @@ type PostLoginJSONBody struct {
 	Password *string `json:"password,omitempty"`
 }
 
+// PostPostCreateJSONBody defines parameters for PostPostCreate.
+type PostPostCreateJSONBody struct {
+	// Text Текст поста
+	Text PostText `json:"text"`
+}
+
+// PutPostUpdateJSONBody defines parameters for PutPostUpdate.
+type PutPostUpdateJSONBody struct {
+	// Id Идентификатор поста
+	Id PostId `json:"id"`
+
+	// Text Текст поста
+	Text PostText `json:"text"`
+}
+
 // PostUserRegisterJSONBody defines parameters for PostUserRegister.
 type PostUserRegisterJSONBody struct {
 	Biography *string `json:"biography,omitempty"`
@@ -93,6 +130,12 @@ type PostLoadtestWriteJSONRequestBody PostLoadtestWriteJSONBody
 // PostLoginJSONRequestBody defines body for PostLogin for application/json ContentType.
 type PostLoginJSONRequestBody PostLoginJSONBody
 
+// PostPostCreateJSONRequestBody defines body for PostPostCreate for application/json ContentType.
+type PostPostCreateJSONRequestBody PostPostCreateJSONBody
+
+// PutPostUpdateJSONRequestBody defines body for PutPostUpdate for application/json ContentType.
+type PutPostUpdateJSONRequestBody PutPostUpdateJSONBody
+
 // PostUserRegisterJSONRequestBody defines body for PostUserRegister for application/json ContentType.
 type PostUserRegisterJSONRequestBody PostUserRegisterJSONBody
 
@@ -104,6 +147,18 @@ type ServerInterface interface {
 
 	// (POST /login)
 	PostLogin(ctx echo.Context) error
+
+	// (POST /post/create)
+	PostPostCreate(ctx echo.Context) error
+
+	// (PUT /post/delete/{id})
+	PutPostDeleteId(ctx echo.Context, id PostId) error
+
+	// (GET /post/get/{id})
+	GetPostGetId(ctx echo.Context, id PostId) error
+
+	// (PUT /post/update)
+	PutPostUpdate(ctx echo.Context) error
 
 	// (GET /user/get/{id})
 	GetUserGetId(ctx echo.Context, id UserId) error
@@ -135,6 +190,62 @@ func (w *ServerInterfaceWrapper) PostLogin(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostLogin(ctx)
+	return err
+}
+
+// PostPostCreate converts echo context to params.
+func (w *ServerInterfaceWrapper) PostPostCreate(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostPostCreate(ctx)
+	return err
+}
+
+// PutPostDeleteId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutPostDeleteId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id PostId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutPostDeleteId(ctx, id)
+	return err
+}
+
+// GetPostGetId converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPostGetId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id PostId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPostGetId(ctx, id)
+	return err
+}
+
+// PutPostUpdate converts echo context to params.
+func (w *ServerInterfaceWrapper) PutPostUpdate(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutPostUpdate(ctx)
 	return err
 }
 
@@ -218,10 +329,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.POST(baseURL+"/loadtest/write", wrapper.PostLoadtestWrite)
 	router.POST(baseURL+"/login", wrapper.PostLogin)
+	router.POST(baseURL+"/post/create", wrapper.PostPostCreate)
+	router.PUT(baseURL+"/post/delete/:id", wrapper.PutPostDeleteId)
+	router.GET(baseURL+"/post/get/:id", wrapper.GetPostGetId)
+	router.PUT(baseURL+"/post/update", wrapper.PutPostUpdate)
 	router.GET(baseURL+"/user/get/:id", wrapper.GetUserGetId)
 	router.POST(baseURL+"/user/register", wrapper.PostUserRegister)
 	router.GET(baseURL+"/user/search", wrapper.GetUserSearch)
 
+}
+
+type N400Response struct {
+}
+
+type N401Response struct {
 }
 
 type N5xxResponseHeaders struct {
@@ -358,6 +479,312 @@ type PostLogin503JSONResponse struct {
 }
 
 func (response PostLogin503JSONResponse) VisitPostLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PostPostCreateRequestObject struct {
+	Body *PostPostCreateJSONRequestBody
+}
+
+type PostPostCreateResponseObject interface {
+	VisitPostPostCreateResponse(w http.ResponseWriter) error
+}
+
+type PostPostCreate200JSONResponse PostId
+
+func (response PostPostCreate200JSONResponse) VisitPostPostCreateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostPostCreate400Response = N400Response
+
+func (response PostPostCreate400Response) VisitPostPostCreateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PostPostCreate401Response = N401Response
+
+func (response PostPostCreate401Response) VisitPostPostCreateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PostPostCreate500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PostPostCreate500JSONResponse) VisitPostPostCreateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PostPostCreate503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PostPostCreate503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PostPostCreate503ResponseHeaders
+}
+
+func (response PostPostCreate503JSONResponse) VisitPostPostCreateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutPostDeleteIdRequestObject struct {
+	Id PostId `json:"id"`
+}
+
+type PutPostDeleteIdResponseObject interface {
+	VisitPutPostDeleteIdResponse(w http.ResponseWriter) error
+}
+
+type PutPostDeleteId200Response struct {
+}
+
+func (response PutPostDeleteId200Response) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type PutPostDeleteId400Response = N400Response
+
+func (response PutPostDeleteId400Response) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PutPostDeleteId401Response = N401Response
+
+func (response PutPostDeleteId401Response) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PutPostDeleteId403Response struct {
+}
+
+func (response PutPostDeleteId403Response) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type PutPostDeleteId404Response struct {
+}
+
+func (response PutPostDeleteId404Response) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type PutPostDeleteId500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PutPostDeleteId500JSONResponse) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutPostDeleteId503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PutPostDeleteId503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PutPostDeleteId503ResponseHeaders
+}
+
+func (response PutPostDeleteId503JSONResponse) VisitPutPostDeleteIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetPostGetIdRequestObject struct {
+	Id PostId `json:"id"`
+}
+
+type GetPostGetIdResponseObject interface {
+	VisitGetPostGetIdResponse(w http.ResponseWriter) error
+}
+
+type GetPostGetId200JSONResponse Post
+
+func (response GetPostGetId200JSONResponse) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPostGetId400Response = N400Response
+
+func (response GetPostGetId400Response) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetPostGetId401Response = N401Response
+
+func (response GetPostGetId401Response) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetPostGetId404Response struct {
+}
+
+func (response GetPostGetId404Response) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type GetPostGetId500JSONResponse struct{ N5xxJSONResponse }
+
+func (response GetPostGetId500JSONResponse) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetPostGetId503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type GetPostGetId503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers GetPostGetId503ResponseHeaders
+}
+
+func (response GetPostGetId503JSONResponse) VisitGetPostGetIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutPostUpdateRequestObject struct {
+	Body *PutPostUpdateJSONRequestBody
+}
+
+type PutPostUpdateResponseObject interface {
+	VisitPutPostUpdateResponse(w http.ResponseWriter) error
+}
+
+type PutPostUpdate200Response struct {
+}
+
+func (response PutPostUpdate200Response) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type PutPostUpdate400Response = N400Response
+
+func (response PutPostUpdate400Response) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PutPostUpdate401Response = N401Response
+
+func (response PutPostUpdate401Response) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PutPostUpdate403Response struct {
+}
+
+func (response PutPostUpdate403Response) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type PutPostUpdate404Response struct {
+}
+
+func (response PutPostUpdate404Response) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type PutPostUpdate500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PutPostUpdate500JSONResponse) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutPostUpdate503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PutPostUpdate503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PutPostUpdate503ResponseHeaders
+}
+
+func (response PutPostUpdate503JSONResponse) VisitPutPostUpdateResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(503)
@@ -567,6 +994,18 @@ type StrictServerInterface interface {
 	// (POST /login)
 	PostLogin(ctx context.Context, request PostLoginRequestObject) (PostLoginResponseObject, error)
 
+	// (POST /post/create)
+	PostPostCreate(ctx context.Context, request PostPostCreateRequestObject) (PostPostCreateResponseObject, error)
+
+	// (PUT /post/delete/{id})
+	PutPostDeleteId(ctx context.Context, request PutPostDeleteIdRequestObject) (PutPostDeleteIdResponseObject, error)
+
+	// (GET /post/get/{id})
+	GetPostGetId(ctx context.Context, request GetPostGetIdRequestObject) (GetPostGetIdResponseObject, error)
+
+	// (PUT /post/update)
+	PutPostUpdate(ctx context.Context, request PutPostUpdateRequestObject) (PutPostUpdateResponseObject, error)
+
 	// (GET /user/get/{id})
 	GetUserGetId(ctx context.Context, request GetUserGetIdRequestObject) (GetUserGetIdResponseObject, error)
 
@@ -641,6 +1080,114 @@ func (sh *strictHandler) PostLogin(ctx echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(PostLoginResponseObject); ok {
 		return validResponse.VisitPostLoginResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostPostCreate operation middleware
+func (sh *strictHandler) PostPostCreate(ctx echo.Context) error {
+	var request PostPostCreateRequestObject
+
+	var body PostPostCreateJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostPostCreate(ctx.Request().Context(), request.(PostPostCreateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostPostCreate")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostPostCreateResponseObject); ok {
+		return validResponse.VisitPostPostCreateResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PutPostDeleteId operation middleware
+func (sh *strictHandler) PutPostDeleteId(ctx echo.Context, id PostId) error {
+	var request PutPostDeleteIdRequestObject
+
+	request.Id = id
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutPostDeleteId(ctx.Request().Context(), request.(PutPostDeleteIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutPostDeleteId")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PutPostDeleteIdResponseObject); ok {
+		return validResponse.VisitPutPostDeleteIdResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetPostGetId operation middleware
+func (sh *strictHandler) GetPostGetId(ctx echo.Context, id PostId) error {
+	var request GetPostGetIdRequestObject
+
+	request.Id = id
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPostGetId(ctx.Request().Context(), request.(GetPostGetIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPostGetId")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetPostGetIdResponseObject); ok {
+		return validResponse.VisitGetPostGetIdResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PutPostUpdate operation middleware
+func (sh *strictHandler) PutPostUpdate(ctx echo.Context) error {
+	var request PutPostUpdateRequestObject
+
+	var body PutPostUpdateJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutPostUpdate(ctx.Request().Context(), request.(PutPostUpdateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutPostUpdate")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PutPostUpdateResponseObject); ok {
+		return validResponse.VisitPutPostUpdateResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

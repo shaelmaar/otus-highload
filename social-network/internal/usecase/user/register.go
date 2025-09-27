@@ -11,7 +11,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
-func (uc *UseCases) Register(ctx context.Context, dto dto.RegisterDTO) (domain.User, error) {
+func (uc *UseCases) Register(ctx context.Context, dto dto.Register) (domain.User, error) {
 	var out domain.User
 
 	passwordHash, err := utils.HashPassword(dto.Password)

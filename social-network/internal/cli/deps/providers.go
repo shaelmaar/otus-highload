@@ -13,17 +13,32 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
+	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
+	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
+	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
+	postRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/post"
+	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
+	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
 	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
+	postUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/post"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
 
-func provideHTTPHandlers(i *do.Injector) {
+func provideUseCases(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*userUseCases.UseCases, error) {
 		return userUseCases.New(
 			do.MustInvoke[domain.UserRepository](i),
+			do.MustInvoke[*auth.Service](i),
+			do.MustInvoke[*transaction.TxExecutor](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*postUseCases.UseCases, error) {
+		return postUseCases.New(
+			do.MustInvoke[domain.PostRepository](i),
 			do.MustInvoke[*transaction.TxExecutor](i),
 		)
 	})
@@ -36,10 +51,19 @@ func provideHTTPHandlers(i *do.Injector) {
 			do.MustInvoke[*zap.Logger](i),
 		)
 	})
+}
 
+func provideHTTPHandlers(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*userHandlers.Handlers, error) {
-		return userHandlers.NewHandlers(
+		return userHandlers.New(
 			do.MustInvoke[*userUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*postHandlers.Handlers, error) {
+		return postHandlers.New(
+			do.MustInvoke[*postUseCases.UseCases](i),
 			do.MustInvoke[*zap.Logger](i),
 		)
 	})
@@ -48,6 +72,34 @@ func provideHTTPHandlers(i *do.Injector) {
 		return loadTestHandlers.New(
 			do.MustInvoke[*loadTestUseCases.UseCases](i),
 			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+}
+
+func provideAuthService(i *do.Injector, cfg *config.Config) {
+	do.Provide(i, func(i *do.Injector) (*auth.Service, error) {
+		return auth.NewService(cfg.Auth.SecretKey, cfg.Auth.Expiration, cfg.ServiceName)
+	})
+}
+
+func provideRepositories(i *do.Injector) {
+	do.Provide(i, func(i *do.Injector) (domain.UserRepository, error) {
+		return userRepo.New(
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
+			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (domain.PostRepository, error) {
+		return postRepo.New(
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
+			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (domain.LoadTestRepository, error) {
+		return loadTestRepo.New(
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 		)
 	})
 }
