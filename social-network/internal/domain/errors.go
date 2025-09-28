@@ -8,4 +8,6 @@ var (
 
 	ErrPostNotFound        = errors.New("post not found")
 	ErrPostNotFoundForUser = errors.New("post not found for user")
+
+	ErrFriendNotFound = errors.New("friend not found")
 )

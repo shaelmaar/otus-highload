@@ -142,6 +142,12 @@ type PostUserRegisterJSONRequestBody PostUserRegisterJSONBody
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (PUT /friend/delete/{user_id})
+	PutFriendDeleteUserId(ctx echo.Context, userId UserId) error
+
+	// (PUT /friend/set/{user_id})
+	PutFriendSetUserId(ctx echo.Context, userId UserId) error
+
 	// (POST /loadtest/write)
 	PostLoadtestWrite(ctx echo.Context) error
 
@@ -173,6 +179,42 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// PutFriendDeleteUserId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutFriendDeleteUserId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId UserId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "user_id", runtime.ParamLocationPath, ctx.Param("user_id"), &userId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutFriendDeleteUserId(ctx, userId)
+	return err
+}
+
+// PutFriendSetUserId converts echo context to params.
+func (w *ServerInterfaceWrapper) PutFriendSetUserId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId UserId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "user_id", runtime.ParamLocationPath, ctx.Param("user_id"), &userId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutFriendSetUserId(ctx, userId)
+	return err
 }
 
 // PostLoadtestWrite converts echo context to params.
@@ -327,6 +369,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.PUT(baseURL+"/friend/delete/:user_id", wrapper.PutFriendDeleteUserId)
+	router.PUT(baseURL+"/friend/set/:user_id", wrapper.PutFriendSetUserId)
 	router.POST(baseURL+"/loadtest/write", wrapper.PostLoadtestWrite)
 	router.POST(baseURL+"/login", wrapper.PostLogin)
 	router.POST(baseURL+"/post/create", wrapper.PostPostCreate)
@@ -361,6 +405,154 @@ type N5xxJSONResponse struct {
 	}
 
 	Headers N5xxResponseHeaders
+}
+
+type PutFriendDeleteUserIdRequestObject struct {
+	UserId UserId `json:"user_id"`
+}
+
+type PutFriendDeleteUserIdResponseObject interface {
+	VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error
+}
+
+type PutFriendDeleteUserId200Response struct {
+}
+
+func (response PutFriendDeleteUserId200Response) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type PutFriendDeleteUserId400Response = N400Response
+
+func (response PutFriendDeleteUserId400Response) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PutFriendDeleteUserId401Response = N401Response
+
+func (response PutFriendDeleteUserId401Response) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PutFriendDeleteUserId404Response struct {
+}
+
+func (response PutFriendDeleteUserId404Response) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type PutFriendDeleteUserId500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PutFriendDeleteUserId500JSONResponse) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutFriendDeleteUserId503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PutFriendDeleteUserId503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PutFriendDeleteUserId503ResponseHeaders
+}
+
+func (response PutFriendDeleteUserId503JSONResponse) VisitPutFriendDeleteUserIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutFriendSetUserIdRequestObject struct {
+	UserId UserId `json:"user_id"`
+}
+
+type PutFriendSetUserIdResponseObject interface {
+	VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error
+}
+
+type PutFriendSetUserId200Response struct {
+}
+
+func (response PutFriendSetUserId200Response) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type PutFriendSetUserId400Response = N400Response
+
+func (response PutFriendSetUserId400Response) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PutFriendSetUserId401Response = N401Response
+
+func (response PutFriendSetUserId401Response) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PutFriendSetUserId404Response struct {
+}
+
+func (response PutFriendSetUserId404Response) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
+type PutFriendSetUserId500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PutFriendSetUserId500JSONResponse) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PutFriendSetUserId503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PutFriendSetUserId503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PutFriendSetUserId503ResponseHeaders
+}
+
+func (response PutFriendSetUserId503JSONResponse) VisitPutFriendSetUserIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
 type PostLoadtestWriteRequestObject struct {
@@ -988,6 +1180,12 @@ func (response GetUserSearch503JSONResponse) VisitGetUserSearchResponse(w http.R
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (PUT /friend/delete/{user_id})
+	PutFriendDeleteUserId(ctx context.Context, request PutFriendDeleteUserIdRequestObject) (PutFriendDeleteUserIdResponseObject, error)
+
+	// (PUT /friend/set/{user_id})
+	PutFriendSetUserId(ctx context.Context, request PutFriendSetUserIdRequestObject) (PutFriendSetUserIdResponseObject, error)
+
 	// (POST /loadtest/write)
 	PostLoadtestWrite(ctx context.Context, request PostLoadtestWriteRequestObject) (PostLoadtestWriteResponseObject, error)
 
@@ -1026,6 +1224,56 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// PutFriendDeleteUserId operation middleware
+func (sh *strictHandler) PutFriendDeleteUserId(ctx echo.Context, userId UserId) error {
+	var request PutFriendDeleteUserIdRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutFriendDeleteUserId(ctx.Request().Context(), request.(PutFriendDeleteUserIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutFriendDeleteUserId")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PutFriendDeleteUserIdResponseObject); ok {
+		return validResponse.VisitPutFriendDeleteUserIdResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PutFriendSetUserId operation middleware
+func (sh *strictHandler) PutFriendSetUserId(ctx echo.Context, userId UserId) error {
+	var request PutFriendSetUserIdRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutFriendSetUserId(ctx.Request().Context(), request.(PutFriendSetUserIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutFriendSetUserId")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PutFriendSetUserIdResponseObject); ok {
+		return validResponse.VisitPutFriendSetUserIdResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // PostLoadtestWrite operation middleware

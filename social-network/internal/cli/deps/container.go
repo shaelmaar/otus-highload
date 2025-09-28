@@ -14,6 +14,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
+	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
@@ -117,6 +118,7 @@ func New(ctx context.Context) (*Container, error) {
 			handlers.NewHandlers(
 				do.MustInvoke[*userHandlers.Handlers](i),
 				do.MustInvoke[*postHandlers.Handlers](i),
+				do.MustInvoke[*friendHandlers.Handlers](i),
 				do.MustInvoke[*loadTestHandlers.Handlers](i),
 			),
 			&server.Options{

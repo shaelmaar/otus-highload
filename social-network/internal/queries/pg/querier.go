@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	FriendCrete(ctx context.Context, arg FriendCreteParams) error
+	FriendDelete(ctx context.Context, arg FriendDeleteParams) error
 	LoadTestDelete(ctx context.Context, id uuid.UUID) error
 	LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) error
 	PostCreate(ctx context.Context, arg PostCreateParams) error

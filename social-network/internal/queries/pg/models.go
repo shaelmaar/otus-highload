@@ -58,6 +58,15 @@ func (ns NullGender) Value() (driver.Value, error) {
 	return string(ns.Gender), nil
 }
 
+// информация о подписках (друзьях) пользователей
+type Friend struct {
+	// идентификатор пользователя подписчика
+	UserID uuid.UUID
+	// идентификатор пользователя, на которого подписан пользователь
+	FriendID  uuid.UUID
+	CreatedAt time.Time
+}
+
 type LoadTest struct {
 	ID    uuid.UUID
 	Value string

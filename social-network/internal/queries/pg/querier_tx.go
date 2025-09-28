@@ -58,6 +58,18 @@ func (s *QueriesTX) WithTx(tx pgx.Tx) QuerierTX {
 	}
 }
 
+func (_d *QueriesTX) FriendCrete(ctx context.Context, arg FriendCreteParams) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.FriendCrete(ctx, arg)
+}
+
+func (_d *QueriesTX) FriendDelete(ctx context.Context, arg FriendDeleteParams) (err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.FriendDelete(ctx, arg)
+}
+
 func (_d *QueriesTX) LoadTestDelete(ctx context.Context, id uuid.UUID) (err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()

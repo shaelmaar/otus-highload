@@ -12,15 +12,18 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
+	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
+	friendRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/friend"
 	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
 	postRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/post"
 	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
+	friendUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/friend"
 	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
 	postUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/post"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
@@ -40,6 +43,12 @@ func provideUseCases(i *do.Injector) {
 		return postUseCases.New(
 			do.MustInvoke[domain.PostRepository](i),
 			do.MustInvoke[*transaction.TxExecutor](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*friendUseCases.UseCases, error) {
+		return friendUseCases.New(
+			do.MustInvoke[domain.FriendRepository](i),
 		)
 	})
 
@@ -68,6 +77,13 @@ func provideHTTPHandlers(i *do.Injector) {
 		)
 	})
 
+	do.Provide(i, func(i *do.Injector) (*friendHandlers.Handlers, error) {
+		return friendHandlers.New(
+			do.MustInvoke[*friendUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+
 	do.Provide(i, func(i *do.Injector) (*loadTestHandlers.Handlers, error) {
 		return loadTestHandlers.New(
 			do.MustInvoke[*loadTestUseCases.UseCases](i),
@@ -92,6 +108,13 @@ func provideRepositories(i *do.Injector) {
 
 	do.Provide(i, func(i *do.Injector) (domain.PostRepository, error) {
 		return postRepo.New(
+			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
+			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (domain.FriendRepository, error) {
+		return friendRepo.New(
 			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
 		)

@@ -29,6 +29,13 @@ type PostHandlers interface {
 		req serverhttp.PutPostDeleteIdRequestObject) (serverhttp.PutPostDeleteIdResponseObject, error)
 }
 
+type FriendHandlers interface {
+	Set(ctx context.Context,
+		req serverhttp.PutFriendSetUserIdRequestObject) (serverhttp.PutFriendSetUserIdResponseObject, error)
+	Delete(ctx context.Context,
+		req serverhttp.PutFriendDeleteUserIdRequestObject) (serverhttp.PutFriendDeleteUserIdResponseObject, error)
+}
+
 type LoadTestHandlers interface {
 	Write(ctx context.Context,
 		req serverhttp.PostLoadtestWriteRequestObject,
@@ -38,12 +45,14 @@ type LoadTestHandlers interface {
 type Handlers struct {
 	user     UserHandlers
 	post     PostHandlers
+	friend   FriendHandlers
 	loadTest LoadTestHandlers
 }
 
 func NewHandlers(
 	user UserHandlers,
 	post PostHandlers,
+	friend FriendHandlers,
 	loadTest LoadTestHandlers,
 ) *Handlers {
 	if utils.IsNil(user) {
@@ -54,6 +63,10 @@ func NewHandlers(
 		panic("post handlers are nil")
 	}
 
+	if utils.IsNil(friend) {
+		panic("friend handlers are nil")
+	}
+
 	if utils.IsNil(loadTest) {
 		panic("load test handlers are nil")
 	}
@@ -61,6 +74,7 @@ func NewHandlers(
 	return &Handlers{
 		user:     user,
 		post:     post,
+		friend:   friend,
 		loadTest: loadTest,
 	}
 }
