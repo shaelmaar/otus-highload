@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
+	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
@@ -104,6 +105,22 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (domain.Post, er
 	}
 
 	return parsePostRow(row), nil
+}
+
+func (r *Repository) GetLastPostsByUserIDs(
+	ctx context.Context, input dto.GetLastPostsByUserIDs) ([]domain.Post, error) {
+	rows, err := r.db.LastPostsByUserIDsWithOffsetLimit(ctx, pg.LastPostsByUserIDsWithOffsetLimitParams{
+		UserIds: utils.MapSlice(input.UserIDs, func(id uuid.UUID) string {
+			return id.String()
+		}),
+		Offset: int32(input.Offset), //nolint:gosec // здесь не будет значения > 1000.
+		Limit:  int32(input.Limit),  //nolint:gosec // здесь не будет значения > 1000.
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last posts by user ids from db: %w", err)
+	}
+
+	return utils.MapSlice(rows, parsePostRow), nil
 }
 
 func (r *Repository) WithTx(tx transaction.Tx) domain.PostRepository {

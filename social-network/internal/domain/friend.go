@@ -10,6 +10,11 @@ import (
 type FriendRepository interface {
 	Create(ctx context.Context, friend Friend) error
 	Delete(ctx context.Context, friend Friend) error
+	Slave() FriendSlaveRepository
+}
+
+type FriendSlaveRepository interface {
+	GetUserFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type Friend struct {

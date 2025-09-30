@@ -23,3 +23,11 @@ for no key update;
 delete
 from post
 where id = @id;
+
+-- name: LastPostsByUserIDsWithOffsetLimit :many
+select *
+from post
+where author_user_id = any((@user_ids::text[])::uuid[])
+order by created_at desc
+limit sqlc.arg('limit')
+offset sqlc.arg('offset');

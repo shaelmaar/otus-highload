@@ -42,6 +42,7 @@ func provideUseCases(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*postUseCases.UseCases, error) {
 		return postUseCases.New(
 			do.MustInvoke[domain.PostRepository](i),
+			do.MustInvoke[domain.FriendRepository](i),
 			do.MustInvoke[*transaction.TxExecutor](i),
 		)
 	})

@@ -7,3 +7,8 @@ on conflict (user_id, friend_id) do nothing;
 delete
 from friend
 where user_id = @user_id and friend_id = @friend_id;
+
+-- name: FriendIDsByUserID :many
+select friend_id
+from friend
+where user_id = @user_id;

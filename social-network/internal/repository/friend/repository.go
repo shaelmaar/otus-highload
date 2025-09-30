@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
@@ -65,4 +66,20 @@ func (r *Repository) Delete(ctx context.Context, friend domain.Friend) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) GetUserFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	friendIDs, err := r.db.FriendIDsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user friend ids from db: %w", err)
+	}
+
+	return friendIDs, nil
+}
+
+func (r *Repository) Slave() domain.FriendSlaveRepository {
+	return &Repository{
+		db:         r._replicaDB,
+		_replicaDB: nil,
+	}
 }

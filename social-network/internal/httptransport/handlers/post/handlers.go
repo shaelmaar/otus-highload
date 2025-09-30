@@ -17,6 +17,7 @@ type UseCases interface {
 	Update(ctx context.Context, input dto.PostUpdate) error
 	Delete(ctx context.Context, input dto.PostDelete) error
 	GetByID(ctx context.Context, id uuid.UUID) (domain.Post, error)
+	GetPostFeed(ctx context.Context, input dto.GetPostFeed) ([]domain.Post, error)
 }
 
 type Handlers struct {

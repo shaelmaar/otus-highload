@@ -70,6 +70,18 @@ func (_d *QueriesTX) FriendDelete(ctx context.Context, arg FriendDeleteParams) (
 	return _d.base.FriendDelete(ctx, arg)
 }
 
+func (_d *QueriesTX) FriendIDsByUserID(ctx context.Context, userID uuid.UUID) (ua1 []uuid.UUID, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.FriendIDsByUserID(ctx, userID)
+}
+
+func (_d *QueriesTX) LastPostsByUserIDsWithOffsetLimit(ctx context.Context, arg LastPostsByUserIDsWithOffsetLimitParams) (pa1 []Post, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.LastPostsByUserIDsWithOffsetLimit(ctx, arg)
+}
+
 func (_d *QueriesTX) LoadTestDelete(ctx context.Context, id uuid.UUID) (err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()

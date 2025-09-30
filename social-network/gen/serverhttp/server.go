@@ -94,6 +94,12 @@ type PostPostCreateJSONBody struct {
 	Text PostText `json:"text"`
 }
 
+// GetPostFeedParams defines parameters for GetPostFeed.
+type GetPostFeedParams struct {
+	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *float32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // PutPostUpdateJSONBody defines parameters for PutPostUpdate.
 type PutPostUpdateJSONBody struct {
 	// Id Идентификатор поста
@@ -159,6 +165,9 @@ type ServerInterface interface {
 
 	// (PUT /post/delete/{id})
 	PutPostDeleteId(ctx echo.Context, id PostId) error
+
+	// (GET /post/feed)
+	GetPostFeed(ctx echo.Context, params GetPostFeedParams) error
 
 	// (GET /post/get/{id})
 	GetPostGetId(ctx echo.Context, id PostId) error
@@ -261,6 +270,33 @@ func (w *ServerInterfaceWrapper) PutPostDeleteId(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PutPostDeleteId(ctx, id)
+	return err
+}
+
+// GetPostFeed converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPostFeed(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPostFeedParams
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", ctx.QueryParams(), &params.Offset)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter offset: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", ctx.QueryParams(), &params.Limit)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPostFeed(ctx, params)
 	return err
 }
 
@@ -375,6 +411,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/login", wrapper.PostLogin)
 	router.POST(baseURL+"/post/create", wrapper.PostPostCreate)
 	router.PUT(baseURL+"/post/delete/:id", wrapper.PutPostDeleteId)
+	router.GET(baseURL+"/post/feed", wrapper.GetPostFeed)
 	router.GET(baseURL+"/post/get/:id", wrapper.GetPostGetId)
 	router.PUT(baseURL+"/post/update", wrapper.PutPostUpdate)
 	router.GET(baseURL+"/user/get/:id", wrapper.GetUserGetId)
@@ -827,6 +864,73 @@ func (response PutPostDeleteId503JSONResponse) VisitPutPostDeleteIdResponse(w ht
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetPostFeedRequestObject struct {
+	Params GetPostFeedParams
+}
+
+type GetPostFeedResponseObject interface {
+	VisitGetPostFeedResponse(w http.ResponseWriter) error
+}
+
+type GetPostFeed200JSONResponse []Post
+
+func (response GetPostFeed200JSONResponse) VisitGetPostFeedResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPostFeed400Response = N400Response
+
+func (response GetPostFeed400Response) VisitGetPostFeedResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetPostFeed401Response = N401Response
+
+func (response GetPostFeed401Response) VisitGetPostFeedResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetPostFeed500JSONResponse struct{ N5xxJSONResponse }
+
+func (response GetPostFeed500JSONResponse) VisitGetPostFeedResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetPostFeed503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type GetPostFeed503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers GetPostFeed503ResponseHeaders
+}
+
+func (response GetPostFeed503JSONResponse) VisitGetPostFeedResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 type GetPostGetIdRequestObject struct {
 	Id PostId `json:"id"`
 }
@@ -1198,6 +1302,9 @@ type StrictServerInterface interface {
 	// (PUT /post/delete/{id})
 	PutPostDeleteId(ctx context.Context, request PutPostDeleteIdRequestObject) (PutPostDeleteIdResponseObject, error)
 
+	// (GET /post/feed)
+	GetPostFeed(ctx context.Context, request GetPostFeedRequestObject) (GetPostFeedResponseObject, error)
+
 	// (GET /post/get/{id})
 	GetPostGetId(ctx context.Context, request GetPostGetIdRequestObject) (GetPostGetIdResponseObject, error)
 
@@ -1382,6 +1489,31 @@ func (sh *strictHandler) PutPostDeleteId(ctx echo.Context, id PostId) error {
 		return err
 	} else if validResponse, ok := response.(PutPostDeleteIdResponseObject); ok {
 		return validResponse.VisitPutPostDeleteIdResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetPostFeed operation middleware
+func (sh *strictHandler) GetPostFeed(ctx echo.Context, params GetPostFeedParams) error {
+	var request GetPostFeedRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPostFeed(ctx.Request().Context(), request.(GetPostFeedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPostFeed")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetPostFeedResponseObject); ok {
+		return validResponse.VisitGetPostFeedResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

@@ -27,6 +27,8 @@ type PostHandlers interface {
 		req serverhttp.PutPostUpdateRequestObject) (serverhttp.PutPostUpdateResponseObject, error)
 	Delete(ctx context.Context,
 		req serverhttp.PutPostDeleteIdRequestObject) (serverhttp.PutPostDeleteIdResponseObject, error)
+	Feed(ctx context.Context,
+		req serverhttp.GetPostFeedRequestObject) (serverhttp.GetPostFeedResponseObject, error)
 }
 
 type FriendHandlers interface {

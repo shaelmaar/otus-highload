@@ -13,6 +13,47 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const lastPostsByUserIDsWithOffsetLimit = `-- name: LastPostsByUserIDsWithOffsetLimit :many
+select id, content, author_user_id, created_at, updated_at
+from post
+where author_user_id = any(($1::text[])::uuid[])
+order by created_at desc
+limit $3
+offset $2
+`
+
+type LastPostsByUserIDsWithOffsetLimitParams struct {
+	UserIds []string
+	Offset  int32
+	Limit   int32
+}
+
+func (q *Queries) LastPostsByUserIDsWithOffsetLimit(ctx context.Context, arg LastPostsByUserIDsWithOffsetLimitParams) ([]Post, error) {
+	rows, err := q.db.Query(ctx, lastPostsByUserIDsWithOffsetLimit, arg.UserIds, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Post
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.AuthorUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const postCreate = `-- name: PostCreate :exec
 insert into post(id, content, author_user_id, created_at)
 values ($1, $2, $3, $4)

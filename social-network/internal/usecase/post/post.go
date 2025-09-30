@@ -18,13 +18,18 @@ type TxExecutor interface {
 }
 
 type UseCases struct {
-	repo domain.PostRepository
-	tx   TxExecutor
+	repo       domain.PostRepository
+	friendRepo domain.FriendRepository
+	tx         TxExecutor
 }
 
-func New(repo domain.PostRepository, tx TxExecutor) (*UseCases, error) {
+func New(repo domain.PostRepository, friendRepo domain.FriendRepository, tx TxExecutor) (*UseCases, error) {
 	if utils.IsNil(repo) {
 		return nil, errors.New("repo is nil")
+	}
+
+	if utils.IsNil(friendRepo) {
+		return nil, errors.New("friend repo is nil")
 	}
 
 	if utils.IsNil(tx) {
@@ -32,7 +37,8 @@ func New(repo domain.PostRepository, tx TxExecutor) (*UseCases, error) {
 	}
 
 	return &UseCases{
-		repo: repo,
-		tx:   tx,
+		repo:       repo,
+		friendRepo: friendRepo,
+		tx:         tx,
 	}, nil
 }

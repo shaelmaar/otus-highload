@@ -33,3 +33,10 @@ func (h *Handlers) PutPostDeleteId(
 	req serverhttp.PutPostDeleteIdRequestObject) (serverhttp.PutPostDeleteIdResponseObject, error) {
 	return h.post.Delete(ctx, req)
 }
+
+// GetPostFeed лента постов (GET /post/feed).
+func (h *Handlers) GetPostFeed(
+	ctx context.Context,
+	req serverhttp.GetPostFeedRequestObject) (serverhttp.GetPostFeedResponseObject, error) {
+	return h.post.Feed(ctx, req)
+}

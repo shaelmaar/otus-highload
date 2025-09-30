@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
 
@@ -20,6 +21,7 @@ type PostRepository interface {
 
 type PostSlaveRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (Post, error)
+	GetLastPostsByUserIDs(ctx context.Context, input dto.GetLastPostsByUserIDs) ([]Post, error)
 }
 
 type Post struct {

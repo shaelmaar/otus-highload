@@ -17,3 +17,15 @@ type PostDelete struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
 }
+
+type GetPostFeed struct {
+	UserID uuid.UUID
+	Offset int
+	Limit  int
+}
+
+type GetLastPostsByUserIDs struct {
+	UserIDs []uuid.UUID
+	Offset  int
+	Limit   int
+}

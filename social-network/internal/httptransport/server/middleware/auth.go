@@ -16,6 +16,7 @@ var authSkipURLPrefixes = []string{
 	"/user/register",
 	"/user/get",
 	"/user/search",
+	"/post/get",
 }
 
 type authConfig struct {

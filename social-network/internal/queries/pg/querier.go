@@ -13,6 +13,8 @@ import (
 type Querier interface {
 	FriendCrete(ctx context.Context, arg FriendCreteParams) error
 	FriendDelete(ctx context.Context, arg FriendDeleteParams) error
+	FriendIDsByUserID(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	LastPostsByUserIDsWithOffsetLimit(ctx context.Context, arg LastPostsByUserIDsWithOffsetLimitParams) ([]Post, error)
 	LoadTestDelete(ctx context.Context, id uuid.UUID) error
 	LoadTestInsert(ctx context.Context, arg LoadTestInsertParams) error
 	PostCreate(ctx context.Context, arg PostCreateParams) error
