@@ -9,18 +9,9 @@ import (
 )
 
 func (u *UseCases) GetPostFeed(ctx context.Context, input dto.GetPostFeed) ([]domain.Post, error) {
-	friendIDs, err := u.friendRepo.Slave().GetUserFriendIDs(ctx, input.UserID)
+	posts, err := u.feedService.GetUserFeed(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user friend ids: %w", err)
-	}
-
-	posts, err := u.repo.Slave().GetLastPostsByUserIDs(ctx, dto.GetLastPostsByUserIDs{
-		UserIDs: friendIDs,
-		Offset:  input.Offset,
-		Limit:   input.Limit,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get last posts by user ids: %w", err)
+		return nil, fmt.Errorf("failed to get user feed: %w", err)
 	}
 
 	return posts, nil

@@ -1,6 +1,7 @@
 volumes:
   social-network-local-db:
   social-network-local-valkey:
+  social-network-local-rabbitmq:
 
 networks:
   social-network-local-net:
@@ -46,3 +47,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - social-network-local-rabbitmq:/var/lib/rabbitmq
+    networks:
+      - social-network-local-net

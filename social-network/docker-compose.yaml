@@ -1,6 +1,7 @@
 volumes:
   social-network-db:
   social-network-valkey:
+  social-network-rabbitmq:
 
 services:
   db:
@@ -40,6 +41,17 @@ services:
       timeout: 10s
       retries: 3
 
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - social-network-rabbitmq:/var/lib/rabbitmq
+
   migrate:
     build: .
     depends_on:
@@ -55,8 +67,18 @@ services:
     depends_on:
       - migrate
       - valkey
+      - rabbitmq
     env_file:
       - .env.local
     ports:
       - "${APP_PORT}:8080"
     restart: unless-stopped
+
+  task_processor:
+    build: .
+    depends_on:
+      - app
+    env_file:
+      - .env.local
+    command: [ "task_process" ]
+    restart: on-failure

@@ -77,6 +77,15 @@ func (r *Repository) GetUserFriendIDs(ctx context.Context, userID uuid.UUID) ([]
 	return friendIDs, nil
 }
 
+func (r *Repository) GetFriendUserIDs(ctx context.Context, friendID uuid.UUID) ([]uuid.UUID, error) {
+	userIDs, err := r.db.UserIDsByFriendID(ctx, friendID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user ids by friend from db: %w", err)
+	}
+
+	return userIDs, nil
+}
+
 func (r *Repository) Slave() domain.FriendSlaveRepository {
 	return &Repository{
 		db:         r._replicaDB,

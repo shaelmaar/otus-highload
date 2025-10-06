@@ -15,6 +15,7 @@ type FriendRepository interface {
 
 type FriendSlaveRepository interface {
 	GetUserFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	GetFriendUserIDs(ctx context.Context, friendID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type Friend struct {

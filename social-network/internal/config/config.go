@@ -18,6 +18,10 @@ type Config struct {
 	Database        Database        `envconfig:"DB"`
 	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
 
+	Valkey Valkey `envconfig:"VALKEY"`
+
+	RabbitMQ RabbitMQ `envconfig:"RABBITMQ"`
+
 	Auth Auth `envconfig:"AUTH"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`

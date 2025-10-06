@@ -136,6 +136,12 @@ func (_d *QueriesTX) UserGetByID(ctx context.Context, id uuid.UUID) (u1 User, er
 	return _d.base.UserGetByID(ctx, id)
 }
 
+func (_d *QueriesTX) UserIDsByFriendID(ctx context.Context, friendID uuid.UUID) (ua1 []uuid.UUID, err error) {
+	_d.mx.Lock()
+	defer _d.mx.Unlock()
+	return _d.base.UserIDsByFriendID(ctx, friendID)
+}
+
 func (_d *QueriesTX) UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) (ua1 []User, err error) {
 	_d.mx.Lock()
 	defer _d.mx.Unlock()

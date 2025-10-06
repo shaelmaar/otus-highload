@@ -7,7 +7,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
+	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
+	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 )
 
@@ -33,4 +35,12 @@ func (c *Container) DebugServer() *echo.Echo {
 
 func (c *Container) UserUseCases() *userUseCases.UseCases {
 	return do.MustInvoke[*userUseCases.UseCases](c.i)
+}
+
+func (c *Container) UserFeedTaskConsumer() *rabbitmq.Consumer[dto.UserFeedUpdateTask] {
+	return do.MustInvokeNamed[*rabbitmq.Consumer[dto.UserFeedUpdateTask]](c.i, nameUserFeedTaskConsumer)
+}
+
+func (c *Container) UserFeedChunkedTaskConsumer() *rabbitmq.Consumer[dto.UserFeedChunkedUpdateTask] {
+	return do.MustInvokeNamed[*rabbitmq.Consumer[dto.UserFeedChunkedUpdateTask]](c.i, nameUserFeedChunkedTaskConsumer)
 }

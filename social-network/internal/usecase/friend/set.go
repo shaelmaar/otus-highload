@@ -19,5 +19,12 @@ func (u *UseCases) Set(ctx context.Context, input dto.FriendSet) error {
 		return fmt.Errorf("failed to create friend %w", err)
 	}
 
+	err = u.userFeedTaskProducer.Publish(ctx, dto.UserFeedUpdateTask{
+		UserID: input.UserID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to publish user feed task%w", err)
+	}
+
 	return nil
 }

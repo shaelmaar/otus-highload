@@ -21,5 +21,12 @@ func (u *UseCases) Delete(ctx context.Context, input dto.FriendDelete) error {
 		return fmt.Errorf("failed to delete friend %w", err)
 	}
 
+	err = u.userFeedTaskProducer.Publish(ctx, dto.UserFeedUpdateTask{
+		UserID: input.UserID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to publish user feed task%w", err)
+	}
+
 	return nil
 }

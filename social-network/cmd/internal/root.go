@@ -50,6 +50,10 @@ func Execute(ctx context.Context) error {
 	// server.
 	rootCmd.AddCommand(NewServeCommand(container))
 
+	// task processing.
+	//nolint:contextcheck // контекст берется из rootCmd.
+	rootCmd.AddCommand(NewTaskProcessCommand(container))
+
 	// migrations.
 	rootCmd.AddCommand(NewMigrateCommand(container))
 

@@ -12,3 +12,8 @@ where user_id = @user_id and friend_id = @friend_id;
 select friend_id
 from friend
 where user_id = @user_id;
+
+-- name: UserIDsByFriendID :many
+select user_id
+from friend
+where friend_id = @friend_id;

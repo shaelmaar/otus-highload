@@ -24,6 +24,7 @@ type Querier interface {
 	PostUpdate(ctx context.Context, arg PostUpdateParams) error
 	UserCreate(ctx context.Context, arg UserCreateParams) error
 	UserGetByID(ctx context.Context, id uuid.UUID) (User, error)
+	UserIDsByFriendID(ctx context.Context, friendID uuid.UUID) ([]uuid.UUID, error)
 	UsersGetByFirstNameSecondName(ctx context.Context, arg UsersGetByFirstNameSecondNameParams) ([]User, error)
 	UsersMassCreate(ctx context.Context, arg []UsersMassCreateParams) (int64, error)
 }

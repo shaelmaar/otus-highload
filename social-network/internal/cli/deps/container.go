@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
+	"github.com/valkey-io/valkey-go"
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
@@ -22,18 +23,32 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
+	"github.com/shaelmaar/otus-highload/social-network/internal/valkeyprovider"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
 
 const (
-	namePgxPool        = "pgxPool"
-	nameReplicaPgxPool = "replicaPgxPool"
-	nameQuerier        = "querier"
-	nameReplicaQuerier = "replicaQuerier"
-	nameDebugServer    = "debugServer"
+	namePgxPool                     = "pgxPool"
+	nameReplicaPgxPool              = "replicaPgxPool"
+	nameQuerier                     = "querier"
+	nameReplicaQuerier              = "replicaQuerier"
+	nameDebugServer                 = "debugServer"
+	nameValkeyProvider              = "valkeyProvider"
+	nameUserFeedTaskProducer        = "userFeedTaskProducer"
+	nameUserFeedChunkedTaskProducer = "userFeedChunkedTaskProducer"
+	nameUserFeedTaskConsumer        = "userFeedTaskConsumer"
+	nameUserFeedChunkedTaskConsumer = "userFeedChunkedTaskConsumer"
 )
 
 type shutdownFunc func(ctx context.Context) error
+
+func sdSimple(f func()) shutdownFunc {
+	return func(ctx context.Context) error {
+		f()
+
+		return nil
+	}
+}
 
 type shutdown struct {
 	sd   shutdownFunc
@@ -47,6 +62,7 @@ type Container struct {
 	mu        sync.Mutex
 }
 
+//nolint:funlen // инициализация DI контейнера.
 func New(ctx context.Context) (*Container, error) {
 	i := do.New()
 	c := &Container{
@@ -84,6 +100,28 @@ func New(ctx context.Context) (*Container, error) {
 		return pg.NewQueriesTX(pg.New(do.MustInvokeNamed[*pgxpool.Pool](i, nameReplicaPgxPool))), nil
 	})
 
+	do.Provide(i, func(i *do.Injector) (*valkeyprovider.Provider, error) {
+		p, err := valkeyprovider.NewProvider(
+			//nolint:exhaustruct // остальное по умолчанию.
+			valkey.ClientOption{
+				InitAddress:      []string{cfg.Valkey.Address},
+				SelectDB:         cfg.Valkey.DB,
+				ConnWriteTimeout: cfg.Valkey.SetTimeout,
+				Password:         cfg.Valkey.Password,
+			},
+			do.MustInvoke[*zap.Logger](i),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		p.Init()
+
+		c.addShutdown(nameValkeyProvider, sdSimple(p.Close))
+
+		return p, nil
+	})
+
 	do.Provide(i, func(i *do.Injector) (*transaction.TxExecutor, error) {
 		return transaction.New(
 			do.MustInvokeNamed[*pgxpool.Pool](i, namePgxPool),
@@ -104,7 +142,15 @@ func New(ctx context.Context) (*Container, error) {
 
 	provideRepositories(i)
 
+	provideCaches(i)
+
+	provideTaskProducers(c, cfg)
+
+	provideTaskConsumers(c, cfg)
+
 	provideAuthService(i, cfg)
+
+	providePostFeedService(i)
 
 	provideUseCases(i)
 

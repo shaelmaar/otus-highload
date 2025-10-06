@@ -25,9 +25,9 @@ type PostSlaveRepository interface {
 }
 
 type Post struct {
-	ID           uuid.UUID
-	Content      string
-	AuthorUserID uuid.UUID
+	ID           uuid.UUID `json:"id"`
+	Content      string    `json:"content"`
+	AuthorUserID uuid.UUID `json:"author_user_id"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
