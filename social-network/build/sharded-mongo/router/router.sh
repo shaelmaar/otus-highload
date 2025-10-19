@@ -24,7 +24,7 @@ echo "🗄️  Initializing app database $APP_DB..."
 /usr/bin/mongosh --quiet --port 27017 <<EOF
 use $APP_DB;
 
-print("✅ Database '$APP_DB' created successfully");
+print("Database '$APP_DB' created successfully");
 EOF
 
-echo "🚀 Router initialization complete"
+echo "Router initialization complete"
