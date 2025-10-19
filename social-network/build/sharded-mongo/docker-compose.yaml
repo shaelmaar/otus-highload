@@ -1,0 +1,325 @@
+volumes:
+  db-vol:
+  valkey-vol:
+  rabbitmq-vol:
+  mongoshard11:
+  mongoshard12:
+  mongoshard13:
+  mongoshard21:
+  mongoshard22:
+  mongoshard23:
+  mongoshard31:
+  mongoshard32:
+  mongoshard33:
+  mongoconfig1:
+  mongoconfig2:
+  mongoconfig3:
+
+networks:
+  sharded-mongo-net:
+   ipam:
+     driver: default
+     config:
+       - subnet: ${DOCKER_SUBNET}
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      DOCKER_SUBNET: ${DOCKER_SUBNET}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - db-vol:/var/lib/postgresql/data
+      - ../../postgresql/ext-trgm.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sharded-mongo-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # первый шард с репликами
+  mongoshard11:
+    build:
+      context: replicaset
+    container_name: mongoshard11
+    depends_on:
+      - mongoshard12
+      - mongoshard13
+    command: mongod --shardsvr --replSet shard1 --dbpath /data/db --port 27017
+    environment:
+      - REPLICA_SET=shard1
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard11:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard12:
+    image: mongo:8-noble
+    container_name: mongoshard12
+    command: mongod --shardsvr --replSet shard1 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard12:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard13:
+    image: mongo:8-noble
+    container_name: mongoshard13
+    command: mongod --shardsvr --replSet shard1 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard13:/data/db
+    networks:
+      - sharded-mongo-net
+
+  # второй шард с репликами
+  mongoshard21:
+    build:
+      context: replicaset
+    container_name: mongoshard21
+    depends_on:
+      - mongoshard22
+      - mongoshard23
+    command: mongod --shardsvr --replSet shard2 --dbpath /data/db --port 27017
+    environment:
+      - REPLICA_SET=shard2
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard21:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard22:
+    image: mongo:8-noble
+    container_name: mongoshard22
+    command: mongod --shardsvr --replSet shard2 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard22:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard23:
+    image: mongo:8-noble
+    container_name: mongoshard23
+    command: mongod --shardsvr --replSet shard2 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard23:/data/db
+    networks:
+      - sharded-mongo-net
+
+  # третий шард с репликами для проверки решардинга.
+  mongoshard31:
+    build:
+      context: replicaset
+    container_name: mongoshard31
+    depends_on:
+      - mongoshard32
+      - mongoshard33
+    command: mongod --shardsvr --replSet shard3 --dbpath /data/db --port 27017
+    environment:
+      - REPLICA_SET=shard3
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard31:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard32:
+    image: mongo:8-noble
+    container_name: mongoshard32
+    command: mongod --shardsvr --replSet shard3 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard32:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongoshard33:
+    image: mongo:8-noble
+    container_name: mongoshard33
+    command: mongod --shardsvr --replSet shard3 --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoshard33:/data/db
+    networks:
+      - sharded-mongo-net
+
+  # mongo кластер конфигурации
+  mongocfg1:
+    build:
+      context: replicaset
+    container_name: mongocfg1
+    depends_on:
+      - mongocfg2
+      - mongocfg3
+    command: mongod --configsvr --replSet cfg --dbpath /data/db --port 27017
+    environment:
+      - REPLICA_SET=cfg
+    expose:
+      - "27017"
+    volumes:
+      - mongoconfig1:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongocfg2:
+    image: mongo:8-noble
+    container_name: mongocfg2
+    command: mongod --configsvr --replSet cfg --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoconfig2:/data/db
+    networks:
+      - sharded-mongo-net
+
+  mongocfg3:
+    image: mongo:8-noble
+    container_name: mongocfg3
+    command: mongod --configsvr --replSet cfg --dbpath /data/db --port 27017
+    expose:
+      - "27017"
+    volumes:
+      - mongoconfig3:/data/db
+    networks:
+      - sharded-mongo-net
+
+  # mongo роутер
+  mongos1:
+    build:
+      context: router
+    container_name: mongos1
+    depends_on:
+      - mongocfg1
+      - mongocfg2
+      - mongocfg3
+      - mongoshard11
+      - mongoshard12
+      - mongoshard13
+      - mongoshard21
+      - mongoshard22
+      - mongoshard23
+    command: mongos --configdb cfg/mongocfg1:27017,mongocfg2:27017,mongocfg3:27017 --port 27017 --bind_ip_all
+    environment:
+      - SHARDS=shard1/mongoshard11;shard2/mongoshard21;shard3/mongoshard31
+      - MONGO_DB_NAME=${MONGO_DB_NAME}
+      - MONGO_DB_USER=${MONGO_DB_USER}
+      - MONGO_DB_PASSWORD=${MONGO_DB_PASSWORD}
+    ports:
+      - "27027:27017"
+    expose:
+      - "27017"
+    networks:
+      - sharded-mongo-net
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-vol:/data
+    networks:
+      - sharded-mongo-net
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD}
+      --save 60 1
+      --loglevel notice
+      --protected-mode no
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-vol:/var/lib/rabbitmq
+    networks:
+      - sharded-mongo-net
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      - db
+      - valkey
+      - rabbitmq
+      - mongos1
+    env_file:
+      - .env
+    command: ["migrate", "up"]
+    restart: on-failure
+    networks:
+      - sharded-mongo-net
+
+  app:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT}:8080"
+    restart: unless-stopped
+    networks:
+      - sharded-mongo-net
+
+  task_processor:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      - app
+    env_file:
+      - .env
+    command: [ "task_process" ]
+    restart: unless-stopped
+    networks:
+      - sharded-mongo-net
+
+  mongo-init-sharding:
+    build:
+      context: init
+    container_name: mongo-init-sharding
+    depends_on:
+      mongos1:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - sharded-mongo-net
+

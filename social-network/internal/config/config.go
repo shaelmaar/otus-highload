@@ -17,6 +17,7 @@ type Config struct {
 
 	Database        Database        `envconfig:"DB"`
 	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
+	MongoDatabase   MongoDatabase   `envconfig:"MONGO_DB"`
 
 	Valkey Valkey `envconfig:"VALKEY"`
 
@@ -40,6 +41,10 @@ func FromEnv() (*Config, error) {
 
 	if err := cfg.Auth.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid auth config: %w", err)
+	}
+
+	if err := cfg.MongoDatabase.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid mongo config: %w", err)
 	}
 
 	return cfg, nil

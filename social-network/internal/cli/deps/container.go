@@ -10,11 +10,13 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
 	"github.com/valkey-io/valkey-go"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
+	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
@@ -30,6 +32,7 @@ import (
 const (
 	namePgxPool                     = "pgxPool"
 	nameReplicaPgxPool              = "replicaPgxPool"
+	nameMongoDialogsDB              = "mongoDialogsDB"
 	nameQuerier                     = "querier"
 	nameReplicaQuerier              = "replicaQuerier"
 	nameDebugServer                 = "debugServer"
@@ -83,13 +86,38 @@ func New(ctx context.Context) (*Container, error) {
 	})
 
 	do.ProvideNamed(i, namePgxPool, func(i *do.Injector) (*pgxpool.Pool, error) {
-		return providePostgresql(ctx, cfg)
+		pool, err := providePostgresql(ctx, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(namePgxPool, sdSimple(pool.Close))
+
+		return pool, nil
 	})
 
 	do.ProvideNamed(i, nameReplicaPgxPool, func(i *do.Injector) (*pgxpool.Pool, error) {
-		return provideReplicaPostgresql(
+		pool, err := provideReplicaPostgresql(
 			ctx, cfg, do.MustInvokeNamed[*pgxpool.Pool](i, namePgxPool),
 		)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(nameReplicaPgxPool, sdSimple(pool.Close))
+
+		return pool, nil
+	})
+
+	do.ProvideNamed(i, nameMongoDialogsDB, func(i *do.Injector) (*mongo.Database, error) {
+		db, err := provideMongoDialogsDB(ctx, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(nameMongoDialogsDB, db.Client().Disconnect)
+
+		return db, nil
 	})
 
 	do.ProvideNamed(i, nameQuerier, func(i *do.Injector) (pg.QuerierTX, error) {
@@ -165,6 +193,7 @@ func New(ctx context.Context) (*Container, error) {
 				do.MustInvoke[*userHandlers.Handlers](i),
 				do.MustInvoke[*postHandlers.Handlers](i),
 				do.MustInvoke[*friendHandlers.Handlers](i),
+				do.MustInvoke[*dialogHandlers.Handlers](i),
 				do.MustInvoke[*loadTestHandlers.Handlers](i),
 			),
 			&server.Options{

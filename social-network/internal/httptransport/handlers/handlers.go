@@ -38,6 +38,13 @@ type FriendHandlers interface {
 		req serverhttp.PutFriendDeleteUserIdRequestObject) (serverhttp.PutFriendDeleteUserIdResponseObject, error)
 }
 
+type DialogHandlers interface {
+	Send(ctx context.Context,
+		req serverhttp.PostDialogUserIdSendRequestObject) (serverhttp.PostDialogUserIdSendResponseObject, error)
+	Get(ctx context.Context,
+		req serverhttp.GetDialogUserIdListRequestObject) (serverhttp.GetDialogUserIdListResponseObject, error)
+}
+
 type LoadTestHandlers interface {
 	Write(ctx context.Context,
 		req serverhttp.PostLoadtestWriteRequestObject,
@@ -48,6 +55,7 @@ type Handlers struct {
 	user     UserHandlers
 	post     PostHandlers
 	friend   FriendHandlers
+	dialog   DialogHandlers
 	loadTest LoadTestHandlers
 }
 
@@ -55,6 +63,7 @@ func NewHandlers(
 	user UserHandlers,
 	post PostHandlers,
 	friend FriendHandlers,
+	dialog DialogHandlers,
 	loadTest LoadTestHandlers,
 ) *Handlers {
 	if utils.IsNil(user) {
@@ -69,6 +78,10 @@ func NewHandlers(
 		panic("friend handlers are nil")
 	}
 
+	if utils.IsNil(dialog) {
+		panic("dialog handlers are nil")
+	}
+
 	if utils.IsNil(loadTest) {
 		panic("load test handlers are nil")
 	}
@@ -77,6 +90,7 @@ func NewHandlers(
 		user:     user,
 		post:     post,
 		friend:   friend,
+		dialog:   dialog,
 		loadTest: loadTest,
 	}
 }

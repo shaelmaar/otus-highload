@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang-migrate/migrate"
-	pgMigrate "github.com/golang-migrate/migrate/database/postgres"
-	_ "github.com/golang-migrate/migrate/source/file"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
+	pgMigrate "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/cobra"
 
@@ -15,7 +16,10 @@ import (
 )
 
 func NewMigrateCommand(container *deps.Container) *cobra.Command {
-	var mg *migrate.Migrate
+	var (
+		mgPostgres *migrate.Migrate
+		mgMongo    *migrate.Migrate
+	)
 
 	cfg := container.Config()
 	pgxPool := container.PgxPool()
@@ -25,28 +29,36 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 		Short: "migrate cmd applies migrations to database",
 		Long:  "migrate cmd applies migrations to database: migrate <up | down>",
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			db, err := sql.Open("pgx", pgxPool.Config().ConnString())
+			postgresDB, err := sql.Open("pgx", pgxPool.Config().ConnString())
 			if err != nil {
 				return fmt.Errorf("failed to connect: %w", err)
 			}
 
-			dbInstance, _ := pgMigrate.WithInstance(db, &pgMigrate.Config{}) //nolint:exhaustruct
+			dbInstance, _ := pgMigrate.WithInstance(postgresDB, &pgMigrate.Config{}) //nolint:exhaustruct
 
-			mg, err = migrate.NewWithDatabaseInstance(
+			mgPostgres, err = migrate.NewWithDatabaseInstance(
 				"file://postgresql/migrations",
 				cfg.Database.Name,
 				dbInstance,
 			)
 			if err != nil {
-				return fmt.Errorf("failed to init migrations: %w", err)
+				return fmt.Errorf("failed to init postgres migrations: %w", err)
+			}
+
+			mgMongo, err = migrate.New(
+				"file://mongo/migrations",
+				cfg.MongoDatabase.URI(),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to init mongo migrations: %w", err)
 			}
 
 			return nil
 		},
 
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if mg != nil {
-				_, _ = mg.Close()
+			if mgPostgres != nil {
+				_, _ = mgPostgres.Close()
 			}
 		},
 	}
@@ -55,13 +67,21 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 		Use:   "up",
 		Short: "apply up migrations",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			err := mg.Up()
+			err := mgPostgres.Up()
 
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
 				return nil
 			case err != nil:
-				return fmt.Errorf("failed to apply migrations: %w", err)
+				return fmt.Errorf("failed to apply postgres migrations: %w", err)
+			}
+
+			err = mgMongo.Up()
+			switch {
+			case errors.Is(err, migrate.ErrNoChange):
+				return nil
+			case err != nil:
+				return fmt.Errorf("failed to apply mongo migrations: %w", err)
 			}
 
 			return nil
@@ -72,9 +92,14 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 		Use:   "down",
 		Short: "apply down migrations",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			err := mg.Down()
+			err := mgPostgres.Down()
 			if err != nil {
-				return fmt.Errorf("failed to down migrations: %w", err)
+				return fmt.Errorf("failed to down postgres migrations: %w", err)
+			}
+
+			err = mgPostgres.Down()
+			if err != nil {
+				return fmt.Errorf("failed to down mongo migrations: %w", err)
 			}
 
 			return nil

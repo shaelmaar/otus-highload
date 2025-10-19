@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/do"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
@@ -21,6 +24,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
+	dialogRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/dialog"
 	friendRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/friend"
 	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
 	postRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/post"
@@ -30,6 +34,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeed"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeedchunked"
+	dialogUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/dialog"
 	feedUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/feed"
 	friendUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/friend"
 	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
@@ -69,6 +74,10 @@ func provideUseCases(i *do.Injector) {
 		return feedUseCases.New(do.MustInvoke[*postfeed.Service](i))
 	})
 
+	do.Provide(i, func(i *do.Injector) (*dialogUseCases.UseCases, error) {
+		return dialogUseCases.New(do.MustInvoke[domain.DialogRepository](i))
+	})
+
 	do.Provide(i, func(i *do.Injector) (*loadTestUseCases.UseCases, error) {
 		return loadTestUseCases.New(
 			do.MustInvoke[domain.LoadTestRepository](i),
@@ -97,6 +106,13 @@ func provideHTTPHandlers(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*friendHandlers.Handlers, error) {
 		return friendHandlers.New(
 			do.MustInvoke[*friendUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*dialogHandlers.Handlers, error) {
+		return dialogHandlers.New(
+			do.MustInvoke[*dialogUseCases.UseCases](i),
 			do.MustInvoke[*zap.Logger](i),
 		)
 	})
@@ -155,6 +171,10 @@ func provideRepositories(i *do.Injector) {
 			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
 		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (domain.DialogRepository, error) {
+		return dialogRepo.New(do.MustInvokeNamed[*mongo.Database](i, nameMongoDialogsDB))
 	})
 
 	do.Provide(i, func(i *do.Injector) (domain.LoadTestRepository, error) {
@@ -340,4 +360,22 @@ func provideReplicaPostgresql(ctx context.Context, cfg *config.Config, pgxPool *
 	}
 
 	return pool, nil
+}
+
+func provideMongoDialogsDB(ctx context.Context, cfg *config.Config) (*mongo.Database, error) {
+	clientOptions := options.Client().ApplyURI(cfg.MongoDatabase.URI())
+
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
+	}
+
+	db := client.Database(cfg.MongoDatabase.Name)
+
+	return db, nil
 }

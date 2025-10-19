@@ -18,14 +18,24 @@
    
 ### Запуск с репликами бд (1 мастер, 2 слейва)
 
-1. При необходимости поменять значения переменных в .env.local, .env.compose
+1. Скопируйте файлы окружения:
+   ```bash
+   cp ./build/simple_db_replicas/.env.example ./build/simple_db_replicas/.env
+   cp ./build/simple_db_replicas/.env.compose.example ./build/simple_db_replicas/.env.compose
+   
+2. Поменять значения если нужно
 
-2. Для запуска: 
+3. Для запуска: 
    ```bash
    make run-simple-db-replicas
-3. Для остановки:
+4. Для остановки:
    ```bash
    make stop-simple-db-replicas
+   ```
+   или с удалением всех хранилищ:
+   ```bash
+   make stop-simple-db-replicas-clear-volumes
+   ```
 
 Необходимые для билда файлы в ./build/simple_db_replicas
 

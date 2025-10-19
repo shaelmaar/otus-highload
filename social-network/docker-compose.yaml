@@ -81,4 +81,4 @@ services:
     env_file:
       - .env.local
     command: [ "task_process" ]
-    restart: on-failure
+    restart: unless-stopped

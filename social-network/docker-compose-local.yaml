@@ -2,6 +2,7 @@ volumes:
   social-network-local-db:
   social-network-local-valkey:
   social-network-local-rabbitmq:
+  social-network-local-mongodb:
 
 networks:
   social-network-local-net:
@@ -25,6 +26,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  mongodb:
+    image: mongo:8-noble
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: dialogs_db
+      MONGO_DB_USER: ${MONGO_DB_USER}
+      MONGO_DB_PASSWORD: ${MONGO_DB_PASSWORD}
+    volumes:
+      - social-network-local-mongodb:/data/db
+      - ./build/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - social-network-local-net
 
   valkey:
     image: valkey/valkey:7.2-alpine

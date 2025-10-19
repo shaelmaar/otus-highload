@@ -1,7 +1,10 @@
 volumes:
-  simple-db-replicas-master-vol:
-  simple-db-replicas-slave1-vol:
-  simple-db-replicas-slave2-vol:
+  master-vol:
+  slave1-vol:
+  slave2-vol:
+  mongo-vol:
+  valkey-vol:
+  rabbitmq-vol:
 
 networks:
  simple-db-replicas-net:
@@ -9,7 +12,6 @@ networks:
      driver: default
      config:
        - subnet: ${DOCKER_SUBNET}
-
 
 services:
   db-master:
@@ -23,8 +25,8 @@ services:
     ports:
       - "${DB_PORT}:5432"
     volumes:
-      - simple-db-replicas-master-vol:/var/lib/postgresql/data
-      - ./build/simple_db_replicas/master:/docker-entrypoint-initdb.d
+      - master-vol:/var/lib/postgresql/data
+      - ./master:/docker-entrypoint-initdb.d
     networks:
       - simple-db-replicas-net
     healthcheck:
@@ -35,8 +37,7 @@ services:
 
   db-slave1:
     build:
-      context: ./build/simple_db_replicas/slave
-      dockerfile: Dockerfile-slave
+      context: ./slave
     container_name: db-slave1
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -46,7 +47,7 @@ services:
       db-master:
         condition: service_healthy
     volumes:
-      - simple-db-replicas-slave1-vol:/var/lib/postgresql/data
+      - slave1-vol:/var/lib/postgresql/data
     networks:
       - simple-db-replicas-net
     ports:
@@ -59,8 +60,7 @@ services:
 
   db-slave2:
     build:
-      context: ./build/simple_db_replicas/slave
-      dockerfile: Dockerfile-slave
+      context: ./slave
     container_name: db-slave2
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -70,7 +70,7 @@ services:
       db-master:
         condition: service_healthy
     volumes:
-      - simple-db-replicas-slave2-vol:/var/lib/postgresql/data
+      - slave2-vol:/var/lib/postgresql/data
     networks:
       - simple-db-replicas-net
     ports:
@@ -92,32 +92,103 @@ services:
       db-slave2:
         condition: service_healthy
     volumes:
-      - ./build/simple_db_replicas/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     networks:
       - simple-db-replicas-net
     ports:
       - "5000:5000"
       - "5001:5001"
 
+  mongo:
+    image: mongo:8-noble
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: dialogs_db
+      MONGO_DB_USER: ${MONGO_DB_USER}
+      MONGO_DB_PASSWORD: ${MONGO_DB_PASSWORD}
+    volumes:
+      - mongo-vol:/data/db
+      - ../mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - simple-db-replicas-net
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-vol:/data
+    networks:
+      - simple-db-replicas-net
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD}
+      --save 60 1
+      --loglevel notice
+      --protected-mode no
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-vol:/var/lib/rabbitmq
+    networks:
+      - simple-db-replicas-net
+
   migrate:
-    build: .
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
     depends_on:
       - haproxy
+      - mongo
+      - valkey
+      - rabbitmq
     env_file:
-      - .env.local
+      - .env
     command: ["migrate", "up"]
     restart: on-failure
     networks:
       - simple-db-replicas-net
 
   app:
-    build: .
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
     depends_on:
       - migrate
     env_file:
-      - .env.local
+      - .env
     ports:
       - "${APP_PORT}:8080"
+    restart: unless-stopped
+    networks:
+      - simple-db-replicas-net
+
+  task_processor:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      - app
+    env_file:
+      - .env
+    command: [ "task_process" ]
     restart: unless-stopped
     networks:
       - simple-db-replicas-net

@@ -1,5 +1,8 @@
 .PHONY: run stop run-local-infra stop-local-infra generate-server lint generate-sql
-.PHONY: run-simple-db-replicas stop-simple-db-replicas run-patroni-db-replicas stop-patroni-db-replicas run-monitoring stop-monitoring
+.PHONY: run-simple-db-replicas stop-simple-db-replicas stop-simple-db-replicas-clear-volumes
+.PHONY: run-patroni-db-replicas stop-patroni-db-replicas run-monitoring stop-monitoring
+.PHONY: run-sharded-mongo stop-sharded-mongo stop-sharded-mongo-clear-volumes
+.PHONY: generate-server lint generate-sql
 
 run:
 	docker-compose --env-file .env.compose up  --build -d --force-recreate
@@ -14,10 +17,25 @@ stop-local-infra:
 	docker-compose -f docker-compose-local.yaml --env-file .env.compose down --remove-orphans
 
 run-simple-db-replicas:
-	docker-compose -f docker-compose_simple-db-replicas.yaml --env-file .env.compose up  --build -d --force-recreate
+	cd ./build/simple_db_replicas && docker-compose --env-file .env.compose up  --build -d --force-recreate
 
 stop-simple-db-replicas:
-	docker-compose -f docker-compose_simple-db-replicas.yaml --env-file .env.compose down --remove-orphans
+	cd ./build/simple_db_replicas && docker-compose --env-file .env.compose down --remove-orphans
+
+stop-simple-db-replicas-clear-volumes:
+	cd ./build/simple_db_replicas && docker-compose --env-file .env.compose down --remove-orphans -v
+
+run-sharded-mongo:
+	cd ./build/sharded-mongo && docker-compose --env-file .env.compose up  --build -d --force-recreate
+
+rerun-sharded-mongo:
+	cd ./build/sharded-mongo && docker-compose --env-file .env.compose up -d
+
+stop-sharded-mongo:
+	cd ./build/sharded-mongo && docker-compose --env-file .env.compose down --remove-orphans
+
+stop-sharded-mongo-clear-volumes:
+	cd ./build/sharded-mongo && docker-compose --env-file .env.compose down --remove-orphans -v
 
 run-patroni-db-replicas:
 	docker-compose -f docker-compose_patroni-db-replicas.yaml --env-file .env.compose up  --build -d --force-recreate
