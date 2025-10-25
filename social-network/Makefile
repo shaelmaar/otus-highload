@@ -1,5 +1,5 @@
-.PHONY: generate-server lint generate-sql run stop
-.PHONY: run stop
+.PHONY: generate-server lint generate-sql
+.PHONY: run-local stop-local stop-local-clear-volumes
 .PHONY: run-local-infra stop-local-infra stop-local-infra-clear-volumes
 .PHONY: run-simple-db-replicas stop-simple-db-replicas stop-simple-db-replicas-clear-volumes
 .PHONY: run-patroni-db-replicas stop-patroni-db-replicas stop-patroni-db-replicas-clear-volumes
@@ -28,11 +28,14 @@ generate-sql: build-docker-gowrap
     		-w /app \
     		otus-highload-gowrap gen -p ./internal/queries/pg -i Querier -o ./internal/queries/pg/querier_tx.go -t ./postgresql/dbtx.tmpl
 
-run:
-	docker-compose --env-file .env.compose up  --build -d --force-recreate
+run-local:
+	cd ./build/local && docker-compose --env-file .env.compose up  --build -d --force-recreate
 
-stop:
-	docker-compose --env-file .env.compose down --remove-orphans
+stop-local:
+	cd ./build/local && docker-compose --env-file .env.compose down --remove-orphans
+
+stop-local-clear-volumes:
+	cd ./build/local && docker-compose --env-file .env.compose down --remove-orphans -v
 
 run-local-infra:
 	cd ./build/local-infra && docker-compose --env-file .env.compose up  --build -d --force-recreate
@@ -72,8 +75,6 @@ stop-sharded-mongo:
 
 stop-sharded-mongo-clear-volumes:
 	cd ./build/sharded-mongo && docker-compose --env-file .env.compose down --remove-orphans -v
-
-
 
 run-monitoring:
 	cd ./build/monitoring && docker-compose up --build -d --force-recreate

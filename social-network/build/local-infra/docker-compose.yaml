@@ -61,9 +61,9 @@ services:
       --protected-mode no
     healthcheck:
       test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 5s
+      timeout: 30s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine

@@ -3,18 +3,23 @@
 ### Запуск со всеми зависимостями:
 
 1. Скопируйте файл окружения:
-   ```bash
-   cp .env.example .env.local
-   
-2. При необходимости поменять значения переменных в .env.local.
+    ```bash
+   cp ./build/local/.env.example ./build/local/.env
+   cp ./build/local/.env.compose.example ./build/local/.env.compose
 
-3. Запустите проект:
+2. При необходимости поменять значения переменных в .env и .env.compose
+
+3. Запуск:
    ```bash
-   make run
+   make run-local
    
-4. Чтобы остановить проект
+4. Остановка:
    ```bash
-   make stop
+   make stop-local
+   ```
+   или с удалением всех хранилищ:
+   ```bash
+   make stop-local-clear-volumes
 
 ### Запуск инфраструктуры
 #### Для дебага, запуска из IDE итп
@@ -99,4 +104,20 @@
    или с удалением всех хранилищ:
    ```bash
    make stop-monitoring-clear-volumes
+   ```
+   
+
+## Для разработки
+
+1. Генерация веб-сервера на основе спецификации OpenAPI 3, лежащей в docs/openapi/swagger.yaml:
+   ```bash
+   make generate-server
+   ```
+2. Генерация sql из схемы бд (postgresql/migrations) и запросов (postgresql/queries):
+   ```bash
+   make generate-sql
+   ```
+3. Линтер golang-кода:
+   ```bash
+   make lint
    ```
