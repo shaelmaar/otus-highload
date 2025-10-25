@@ -1,0 +1,182 @@
+volumes:
+  patroni1-vol:
+  patroni2-vol:
+  patroni3-vol:
+  rabbitmq-vol:
+  mongo-vol:
+  valkey-vol:
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379"
+
+  patroni1:
+    build:
+      context: .
+    container_name: patroni1
+    depends_on:
+      - etcd
+    ports:
+      - "5433:5432"
+      - "8008:8008"
+    volumes:
+      - patroni1-vol:/var/lib/postgresql/data:rw
+      - ./patroni1.yaml:/etc/patroni.yaml:ro
+      - ./init:/etc/patroni/init
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 200s
+      retries: 100
+
+  patroni2:
+    build:
+      context: .
+    container_name: patroni2
+    depends_on:
+      - etcd
+    ports:
+      - "5434:5432"
+      - "8009:8008"
+    volumes:
+      - patroni2-vol:/var/lib/postgresql/data:rw
+      - ./patroni2.yaml:/etc/patroni.yaml:ro
+      - ./init:/etc/patroni/init
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 200s
+      retries: 100
+
+  patroni3:
+    build:
+      context: .
+    container_name: patroni3
+    depends_on:
+      - etcd
+    ports:
+      - "5435:5432"
+      - "8010:8008"
+    volumes:
+      - patroni3-vol:/var/lib/postgresql/data:rw
+      - ./patroni3.yaml:/etc/patroni.yaml:ro
+      - ./init:/etc/patroni/init
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 200s
+      retries: 100
+
+  haproxy:
+    image: haproxy:2.7
+    container_name: haproxy
+    depends_on:
+      patroni1:
+        condition: service_healthy
+      patroni2:
+        condition: service_healthy
+      patroni3:
+        condition: service_healthy
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/healthcheck.sh:/usr/local/etc/haproxy/check.sh:ro
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    healthcheck:
+      test: [ "CMD", "/usr/local/etc/haproxy/check.sh" ]
+      interval: 5s
+      retries: 20
+      timeout: 2s
+
+  mongo:
+    image: mongo:8-noble
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: dialogs_db
+      MONGO_DB_USER: ${MONGO_DB_USER}
+      MONGO_DB_PASSWORD: ${MONGO_DB_PASSWORD}
+    volumes:
+      - mongo-vol:/data/db
+      - ../mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-vol:/data
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD}
+      --save 60 1
+      --loglevel notice
+      --protected-mode no
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-vol:/var/lib/rabbitmq
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      haproxy:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    env_file:
+      - .env
+    command: ["migrate", "up"]
+    restart: on-failure
+
+  app:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT}:8080"
+      - "${APP_DEBUG_PORT}:8081"
+    restart: unless-stopped
+
+  task_processor:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      - app
+    env_file:
+      - .env
+    command: [ "task_process" ]
+    restart: unless-stopped
+

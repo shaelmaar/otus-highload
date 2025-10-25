@@ -23,6 +23,7 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 
 	cfg := container.Config()
 	pgxPool := container.PgxPool()
+	logger := container.Logger()
 
 	cmd := cobra.Command{ //nolint:exhaustruct
 		Use:   "migrate",
@@ -71,17 +72,21 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
-				return nil
+				logger.Info("no postgres migrations found")
 			case err != nil:
 				return fmt.Errorf("failed to apply postgres migrations: %w", err)
+			case err == nil:
+				logger.Info("postgres migrations applied")
 			}
 
 			err = mgMongo.Up()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
-				return nil
+				logger.Info("no mongo migrations found")
 			case err != nil:
 				return fmt.Errorf("failed to apply mongo migrations: %w", err)
+			case err == nil:
+				logger.Info("mongo migrations applied")
 			}
 
 			return nil

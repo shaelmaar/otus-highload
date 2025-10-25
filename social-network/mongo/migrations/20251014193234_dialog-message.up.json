@@ -1,0 +1,16 @@
+[
+    {
+        "create": "dialogMessages"
+    },
+    {
+        "createIndexes": "dialogMessages",
+        "indexes": [
+            {
+                "key": {
+                    "dialogID": "hashed"
+                },
+                "name": "dialogID_hashed"
+            }
+        ]
+    }
+]

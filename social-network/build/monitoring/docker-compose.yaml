@@ -1,5 +1,3 @@
-name: "monitoring"
-
 volumes:
   grafana-data:
 
@@ -8,7 +6,7 @@ services:
     image: prom/prometheus:latest
     container_name: monitoring_prometheus
     volumes:
-      - ./build/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
     expose:
       - 9090
     ports:

@@ -1,11 +1,11 @@
 volumes:
-  social-network-local-db:
-  social-network-local-valkey:
-  social-network-local-rabbitmq:
-  social-network-local-mongodb:
+  db-vol:
+  mongo-vol:
+  valkey-vol:
+  rabbitmq-vol:
 
 networks:
-  social-network-local-net:
+  local-infra-net:
 
 services:
   db:
@@ -17,10 +17,10 @@ services:
     ports:
       - "${DB_PORT}:5432"
     volumes:
-      - social-network-local-db:/var/lib/postgresql/data
-      - ./postgresql/ext-trgm.sql:/docker-entrypoint-initdb.d/init.sql
+      - db-vol:/var/lib/postgresql/data
+      - ../../postgresql/ext-trgm.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - social-network-local-net
+      - local-infra-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
       interval: 5s
@@ -38,10 +38,10 @@ services:
       MONGO_DB_USER: ${MONGO_DB_USER}
       MONGO_DB_PASSWORD: ${MONGO_DB_PASSWORD}
     volumes:
-      - social-network-local-mongodb:/data/db
-      - ./build/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+      - mongo-vol:/data/db
+      - ../mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
-      - social-network-local-net
+      - local-infra-net
 
   valkey:
     image: valkey/valkey:7.2-alpine
@@ -50,9 +50,9 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - social-network-local-valkey:/data
+      - valkey-vol:/data
     networks:
-      - social-network-local-net
+      - local-infra-net
     command: >
       valkey-server
       --requirepass ${VALKEY_PASSWORD}
@@ -74,6 +74,6 @@ services:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
     volumes:
-      - social-network-local-rabbitmq:/var/lib/rabbitmq
+      - rabbitmq-vol:/var/lib/rabbitmq
     networks:
-      - social-network-local-net
+      - local-infra-net
