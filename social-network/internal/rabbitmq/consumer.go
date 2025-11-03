@@ -33,7 +33,7 @@ type Consumer[T Message] struct {
 }
 
 func NewConsumer[T Message](
-	url, queueName string,
+	url, queueName, exchangeName string,
 	handler func(context.Context, T) error,
 	logger *zap.Logger,
 	opts ...ConsumerOption[T],
@@ -66,6 +66,34 @@ func NewConsumer[T Message](
 
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	queue, err := ch.QueueDeclare(
+		queueName,
+		false,
+		false,
+		false,
+		false,
+		amqp.Table{
+			"x-message-ttl": c.messageTTL.Milliseconds(),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to declare a queue: %w", err)
+	}
+
+	if exchangeName != "" {
+		err = ch.ExchangeDeclare(exchangeName, "fanout", false, false, false, false, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to declare an exchange: %w", err)
+		}
+
+		err = ch.QueueBind(queue.Name, "", exchangeName, false, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to bind a queue: %w", err)
+		}
+
+		c.queueName = queue.Name
 	}
 
 	err = ch.Qos(
@@ -178,6 +206,8 @@ func (c *Consumer[T]) worker(ctx context.Context, n int, wg *sync.WaitGroup, mes
 			if err != nil {
 				logger.Error("failed to ack message", zap.Error(err))
 			}
+
+			logger.Info("message acked", zap.String("queue_name", c.queueName))
 		}()
 	}
 

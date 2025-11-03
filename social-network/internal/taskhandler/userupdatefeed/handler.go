@@ -23,8 +23,8 @@ func New(updater Updater) (*Handler, error) {
 	}, nil
 }
 
-func (u *Handler) Handle(ctx context.Context, task dto.UserFeedUpdateTask) error {
-	err := u.updater.UpdateUserFeed(ctx, task.UserID)
+func (h *Handler) Handle(ctx context.Context, task dto.UserFeedUpdateTask) error {
+	err := h.updater.UpdateUserFeed(ctx, task.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to update user feed: %w", err)
 	}

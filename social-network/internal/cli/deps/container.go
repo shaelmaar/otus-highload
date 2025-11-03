@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
+	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
@@ -30,17 +31,21 @@ import (
 )
 
 const (
-	namePgxPool                     = "pgxPool"
-	nameReplicaPgxPool              = "replicaPgxPool"
-	nameMongoDialogsDB              = "mongoDialogsDB"
-	nameQuerier                     = "querier"
-	nameReplicaQuerier              = "replicaQuerier"
-	nameDebugServer                 = "debugServer"
-	nameValkeyProvider              = "valkeyProvider"
-	nameUserFeedTaskProducer        = "userFeedTaskProducer"
-	nameUserFeedChunkedTaskProducer = "userFeedChunkedTaskProducer"
-	nameUserFeedTaskConsumer        = "userFeedTaskConsumer"
-	nameUserFeedChunkedTaskConsumer = "userFeedChunkedTaskConsumer"
+	namePgxPool                        = "pgxPool"
+	nameReplicaPgxPool                 = "replicaPgxPool"
+	nameMongoDialogsDB                 = "mongoDialogsDB"
+	nameQuerier                        = "querier"
+	nameReplicaQuerier                 = "replicaQuerier"
+	nameDebugServer                    = "debugServer"
+	nameValkeyProvider                 = "valkeyProvider"
+	nameUserFeedTaskProducer           = "userFeedTaskProducer"
+	nameUserFeedChunkedTaskProducer    = "userFeedChunkedTaskProducer"
+	namePostCreatedChunkedTaskProducer = "postCreatedChunkedTaskProducer"
+	nameUserFeedTaskConsumer           = "userFeedTaskConsumer"
+	nameUserFeedChunkedTaskConsumer    = "userFeedChunkedTaskConsumer"
+	namePostCreatedChunkedTaskConsumer = "postCreatedChunkedTaskConsumer"
+	nameMelodyWebsocket                = "melodyWebsocket"
+	nameWSServer                       = "wsServer"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -50,6 +55,12 @@ func sdSimple(f func()) shutdownFunc {
 		f()
 
 		return nil
+	}
+}
+
+func sdWithoutCtx(f func() error) shutdownFunc {
+	return func(_ context.Context) error {
+		return f()
 	}
 }
 
@@ -184,18 +195,28 @@ func New(ctx context.Context) (*Container, error) {
 
 	provideHTTPHandlers(i)
 
+	provideMelody(c)
+
+	//nolint:contextcheck // контекст тут никак не передается.
+	provideWSServer(i, cfg)
+
 	//nolint:contextcheck // контекст тут никак не передается.
 	do.Provide(i, func(i *do.Injector) (*server.Server, error) {
 		logger := do.MustInvoke[*zap.Logger](i)
 
 		httpServer, err := server.NewStrict(
-			handlers.NewHandlers(
-				do.MustInvoke[*userHandlers.Handlers](i),
-				do.MustInvoke[*postHandlers.Handlers](i),
-				do.MustInvoke[*friendHandlers.Handlers](i),
-				do.MustInvoke[*dialogHandlers.Handlers](i),
-				do.MustInvoke[*loadTestHandlers.Handlers](i),
-			),
+			func(e *echo.Echo) {
+				si := serverhttp.NewStrictHandler(handlers.NewHandlers(
+					do.MustInvoke[*userHandlers.Handlers](i),
+					do.MustInvoke[*postHandlers.Handlers](i),
+					do.MustInvoke[*friendHandlers.Handlers](i),
+					do.MustInvoke[*dialogHandlers.Handlers](i),
+					do.MustInvoke[*loadTestHandlers.Handlers](i),
+				), nil)
+
+				serverhttp.RegisterHandlers(e, si)
+			},
+
 			&server.Options{
 				Debug:       false,
 				ServiceName: cfg.ServiceName,

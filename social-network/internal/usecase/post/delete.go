@@ -35,7 +35,12 @@ func (u *UseCases) Delete(ctx context.Context, input dto.PostDelete) error {
 		return fmt.Errorf("failed to execute transaction: %w", err)
 	}
 
-	err = u.publishUserFeedChunkedTasks(ctx, input.UserID)
+	friendIDs, err := u.friendRepo.Slave().GetFriendUserIDs(ctx, input.UserID)
+	if err != nil {
+		return fmt.Errorf("failed to get friend ids: %w", err)
+	}
+
+	err = u.publishUserFeedChunkedTasks(ctx, friendIDs)
 	if err != nil {
 		return fmt.Errorf("failed to publish user feed chunked tasks: %w", err)
 	}

@@ -29,6 +29,10 @@ func (c *Container) HTTPServer() *server.Server {
 	return do.MustInvoke[*server.Server](c.i)
 }
 
+func (c *Container) WSServer() *server.Server {
+	return do.MustInvokeNamed[*server.Server](c.i, nameWSServer)
+}
+
 func (c *Container) DebugServer() *echo.Echo {
 	return do.MustInvokeNamed[*echo.Echo](c.i, nameDebugServer)
 }
@@ -43,4 +47,8 @@ func (c *Container) UserFeedTaskConsumer() *rabbitmq.Consumer[dto.UserFeedUpdate
 
 func (c *Container) UserFeedChunkedTaskConsumer() *rabbitmq.Consumer[dto.UserFeedChunkedUpdateTask] {
 	return do.MustInvokeNamed[*rabbitmq.Consumer[dto.UserFeedChunkedUpdateTask]](c.i, nameUserFeedChunkedTaskConsumer)
+}
+
+func (c *Container) PostCreatedChunkedTaskConsumer() *rabbitmq.Consumer[dto.PostCreatedChunkedTask] {
+	return do.MustInvokeNamed[*rabbitmq.Consumer[dto.PostCreatedChunkedTask]](c.i, namePostCreatedChunkedTaskConsumer)
 }

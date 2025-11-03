@@ -11,7 +11,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
-	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server/logger"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server/middleware"
 )
@@ -81,11 +80,11 @@ func WithCustomMiddlewares(fns ...echo.MiddlewareFunc) OptionalFunc {
 	}
 }
 
-func NewStrict(si serverhttp.StrictServerInterface, opt *Options, optionalFn ...OptionalFunc) (*Server, error) {
-	return New(serverhttp.NewStrictHandler(si, nil), opt, optionalFn...)
+func NewStrict(handlersRegistrator func(*echo.Echo), opt *Options, optionalFn ...OptionalFunc) (*Server, error) {
+	return New(handlersRegistrator, opt, optionalFn...)
 }
 
-func New(si serverhttp.ServerInterface, opt *Options, optionalFn ...OptionalFunc) (*Server, error) {
+func New(handlersRegistrator func(*echo.Echo), opt *Options, optionalFn ...OptionalFunc) (*Server, error) {
 	e := echo.New()
 	e.Debug = opt.Debug
 	e.HideBanner = true
@@ -118,7 +117,7 @@ func New(si serverhttp.ServerInterface, opt *Options, optionalFn ...OptionalFunc
 		e.Use(mw)
 	}
 
-	serverhttp.RegisterHandlers(e, si)
+	handlersRegistrator(e)
 
 	return &Server{
 		Echo:   e,
@@ -215,6 +214,16 @@ func (s *Server) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+type Handlers interface {
+	HandleWebSocket(c echo.Context) error
+}
+
+func RegisterWSHandlers(h Handlers) func(e *echo.Echo) {
+	return func(e *echo.Echo) {
+		e.GET("/ws", h.HandleWebSocket)
+	}
 }
 
 func defaultURLSkipper(c echo.Context) bool {

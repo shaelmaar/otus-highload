@@ -23,3 +23,7 @@ type FeedService interface {
 type UserFeedChunkedProducer interface {
 	Publish(ctx context.Context, task dto.UserFeedChunkedUpdateTask) error
 }
+
+type PostCreatedChunkedProducer interface {
+	Publish(ctx context.Context, task dto.PostCreatedChunkedTask) error
+}

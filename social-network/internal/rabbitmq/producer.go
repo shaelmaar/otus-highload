@@ -22,21 +22,26 @@ type Message interface {
 }
 
 type Producer[T Message] struct {
-	conn   *amqp.Connection
-	ch     *amqp.Channel
-	queue  amqp.Queue
-	logger *zap.Logger
+	conn               *amqp.Connection
+	ch                 *amqp.Channel
+	queueName          string
+	fanoutExchangeName string
+	logger             *zap.Logger
 
 	messageTTL time.Duration
 }
 
 func NewProducer[T Message](
-	url, queueName string,
+	url, queueName, fanoutExchangeName string,
 	logger *zap.Logger,
 	opts ...ProducerOption[T],
 ) (*Producer[T], error) {
 	if utils.IsNil(logger) {
 		return nil, errors.New("logger is nil")
+	}
+
+	if queueName != "" && fanoutExchangeName != "" {
+		return nil, errors.New("fanout exchange name and queue name both set")
 	}
 
 	conn, err := amqp.Dial(url)
@@ -50,32 +55,44 @@ func NewProducer[T Message](
 	}
 
 	p := &Producer[T]{
-		conn:       conn,
-		ch:         ch,
-		queue:      amqp.Queue{}, //nolint:exhaustruct // пустая структура, определяется ниже.
-		logger:     logger,
-		messageTTL: defaultMessageTTL,
+		conn:               conn,
+		ch:                 ch,
+		queueName:          queueName,
+		fanoutExchangeName: fanoutExchangeName,
+		logger:             logger,
+		messageTTL:         defaultMessageTTL,
 	}
 
 	for _, opt := range opts {
 		opt(p)
 	}
 
-	queue, err := ch.QueueDeclare(
-		queueName,
-		false,
-		false,
-		false,
-		false,
-		amqp.Table{
-			"x-message-ttl": p.messageTTL.Milliseconds(),
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to declare a queue: %w", err)
+	if queueName != "" {
+		_, err = ch.QueueDeclare(
+			queueName,
+			false,
+			false,
+			false,
+			false,
+			amqp.Table{
+				"x-message-ttl": p.messageTTL.Milliseconds(),
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to declare a queue: %w", err)
+		}
+
+		p.queueName = queueName
 	}
 
-	p.queue = queue
+	if fanoutExchangeName != "" {
+		err = ch.ExchangeDeclare(fanoutExchangeName, "fanout", false, false, false, false, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to declare an exchange: %w", err)
+		}
+
+		p.fanoutExchangeName = fanoutExchangeName
+	}
 
 	return p, nil
 }
@@ -98,8 +115,8 @@ func (p *Producer[T]) Publish(ctx context.Context, message T) error {
 	}
 
 	err = p.ch.PublishWithContext(ctx,
-		"",
-		p.queue.Name,
+		p.fanoutExchangeName,
+		p.queueName,
 		false,
 		false,
 		amqp.Publishing{ //nolint:exhaustruct // остальное пока не нужно.
@@ -111,7 +128,8 @@ func (p *Producer[T]) Publish(ctx context.Context, message T) error {
 	}
 
 	p.logger.Info("message published",
-		zap.String("queue_name", p.queue.Name),
+		zap.String("queue_name", p.queueName),
+		zap.String("fanout_exchange_name", p.fanoutExchangeName),
 		zap.String("message_info", message.Info()),
 	)
 

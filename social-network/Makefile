@@ -1,4 +1,4 @@
-.PHONY: generate-server lint generate-sql
+.PHONY: generate-server lint generate-sql generate-async-api
 .PHONY: run-local stop-local stop-local-clear-volumes
 .PHONY: run-local-infra stop-local-infra stop-local-infra-clear-volumes
 .PHONY: run-simple-db-replicas stop-simple-db-replicas stop-simple-db-replicas-clear-volumes
@@ -27,6 +27,9 @@ generate-sql: build-docker-gowrap
     		-v $(PWD):/app \
     		-w /app \
     		otus-highload-gowrap gen -p ./internal/queries/pg -i Querier -o ./internal/queries/pg/querier_tx.go -t ./postgresql/dbtx.tmpl
+
+generate-async-api:
+	@docker run --rm -v $(PWD):/app -w /app lerenn/asyncapi-codegen asyncapi-codegen -i ./docs/asyncapi/asyncapi.json -g types -p async -o ./gen/async/types.gen.go
 
 run-local:
 	cd ./build/local && docker-compose --env-file .env.compose up  --build -d --force-recreate
@@ -84,3 +87,9 @@ stop-monitoring:
 
 stop-monitoring-clear-volumes:
 	cd ./build/monitoring && docker-compose down --remove-orphans -v
+
+run-rabbitmq-cluster:
+	cd ./build/rabbitmq-cluster && docker-compose --env-file .env.compose up  --build -d --force-recreate
+
+stop-rabbitmq-cluster:
+	cd ./build/rabbitmq-cluster && docker-compose --env-file .env.compose down --remove-orphans -v

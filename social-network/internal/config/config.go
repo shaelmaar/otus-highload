@@ -10,6 +10,7 @@ import (
 type Config struct {
 	ServiceName           string `envconfig:"SERVICE_NAME" default:"social-network"`
 	ServerListenPort      int    `envconfig:"SERVER_LISTEN_PORT" required:"true"`
+	WSServerListenPort    int    `envconfig:"WS_SERVER_LISTEN_PORT" required:"true"`
 	DebugServerListenPort int    `envconfig:"DEBUG_SERVER_LISTEN_PORT" required:"true"`
 	Debug                 bool   `envconfig:"DEBUG" default:"false"`
 

@@ -50,6 +50,10 @@ func Execute(ctx context.Context) error {
 	// server.
 	rootCmd.AddCommand(NewServeCommand(container))
 
+	// websocket.
+	//nolint:contextcheck // контекст берется из rootCmd.
+	rootCmd.AddCommand(NewWebsocketServeCommand(container))
+
 	// task processing.
 	//nolint:contextcheck // контекст берется из rootCmd.
 	rootCmd.AddCommand(NewTaskProcessCommand(container))

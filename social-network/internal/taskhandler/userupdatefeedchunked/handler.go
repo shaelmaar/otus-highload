@@ -23,8 +23,8 @@ func New(updater Updater) (*Handler, error) {
 	}, nil
 }
 
-func (u *Handler) Handle(ctx context.Context, task dto.UserFeedChunkedUpdateTask) error {
-	err := u.updater.UpdateUserFeedChunked(ctx, task.UserIDs)
+func (h *Handler) Handle(ctx context.Context, task dto.UserFeedChunkedUpdateTask) error {
+	err := h.updater.UpdateUserFeedChunked(ctx, task.UserIDs)
 	if err != nil {
 		return fmt.Errorf("failed to update user feed chunked: %w", err)
 	}

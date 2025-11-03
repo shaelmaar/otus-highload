@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/olahol/melody"
 	"github.com/samber/do"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,11 +17,14 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
+	wsHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/ws"
+	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
@@ -31,7 +35,7 @@ import (
 	userRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/user"
 	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/service/postfeed"
-	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler"
+	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/postcreatedchunked"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeed"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeedchunked"
 	dialogUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/dialog"
@@ -59,6 +63,7 @@ func provideUseCases(i *do.Injector) {
 			do.MustInvoke[domain.FriendRepository](i),
 			do.MustInvoke[*postfeed.Service](i),
 			do.MustInvokeNamed[*rabbitmq.Producer[dto.UserFeedChunkedUpdateTask]](i, nameUserFeedChunkedTaskProducer),
+			do.MustInvokeNamed[*rabbitmq.Producer[dto.PostCreatedChunkedTask]](i, namePostCreatedChunkedTaskProducer),
 			do.MustInvoke[*transaction.TxExecutor](i),
 		)
 	})
@@ -121,6 +126,46 @@ func provideHTTPHandlers(i *do.Injector) {
 		return loadTestHandlers.New(
 			do.MustInvoke[*loadTestUseCases.UseCases](i),
 			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+}
+
+func provideMelody(c *Container) {
+	do.Provide(c.i, func(i *do.Injector) (*melody.Melody, error) {
+		m := melody.New()
+
+		// конфигурацию можно изменить в m.Config.
+		// пока дефолтного конфига достаточно.
+
+		c.addShutdown(nameMelodyWebsocket, sdWithoutCtx(m.Close))
+
+		return m, nil
+	})
+}
+
+func provideWSServer(i *do.Injector, cfg *config.Config) {
+	do.Provide(i, func(i *do.Injector) (*wsHandlers.Handlers, error) {
+		return wsHandlers.New(
+			do.MustInvoke[*melody.Melody](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+	})
+
+	do.Provide(i, func(i *do.Injector) (*handlers.WSHandlers, error) {
+		return handlers.NewWSHandlers(
+			do.MustInvoke[*wsHandlers.Handlers](i),
+		)
+	})
+
+	do.ProvideNamed(i, nameWSServer, func(i *do.Injector) (*server.Server, error) {
+		return server.New(
+			server.RegisterWSHandlers(do.MustInvoke[*handlers.WSHandlers](i)),
+			&server.Options{
+				Debug:       false,
+				ServiceName: cfg.ServiceName,
+				Logger:      do.MustInvoke[*zap.Logger](i),
+				AuthService: do.MustInvoke[*auth.Service](i),
+			},
 		)
 	})
 }
@@ -189,7 +234,8 @@ func provideTaskProducers(c *Container, cfg *config.Config) {
 		c.i, nameUserFeedTaskProducer, func(i *do.Injector) (*rabbitmq.Producer[dto.UserFeedUpdateTask], error) {
 			p, err := rabbitmq.NewProducer[dto.UserFeedUpdateTask](
 				cfg.RabbitMQ.URL(),
-				taskhandler.UserFeedUpdateQueueName,
+				rabbitmq.UserFeedUpdateQueueName,
+				"",
 				do.MustInvoke[*zap.Logger](i),
 			)
 			if err != nil {
@@ -207,7 +253,8 @@ func provideTaskProducers(c *Container, cfg *config.Config) {
 		func(i *do.Injector) (*rabbitmq.Producer[dto.UserFeedChunkedUpdateTask], error) {
 			p, err := rabbitmq.NewProducer[dto.UserFeedChunkedUpdateTask](
 				cfg.RabbitMQ.URL(),
-				taskhandler.UserFeedUpdateChunkedQueueName,
+				rabbitmq.UserFeedUpdateChunkedQueueName,
+				"",
 				do.MustInvoke[*zap.Logger](i),
 			)
 			if err != nil {
@@ -215,6 +262,25 @@ func provideTaskProducers(c *Container, cfg *config.Config) {
 			}
 
 			c.addShutdown(nameUserFeedChunkedTaskProducer, sdSimple(p.Close))
+
+			return p, nil
+		},
+	)
+
+	do.ProvideNamed(
+		c.i, namePostCreatedChunkedTaskProducer,
+		func(i *do.Injector) (*rabbitmq.Producer[dto.PostCreatedChunkedTask], error) {
+			p, err := rabbitmq.NewProducer[dto.PostCreatedChunkedTask](
+				cfg.RabbitMQ.URL(),
+				"",
+				rabbitmq.PostCreatedExchangeName,
+				do.MustInvoke[*zap.Logger](i),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			c.addShutdown(namePostCreatedChunkedTaskProducer, sdSimple(p.Close))
 
 			return p, nil
 		},
@@ -232,7 +298,8 @@ func provideTaskConsumers(c *Container, cfg *config.Config) {
 		c.i, nameUserFeedTaskConsumer, func(i *do.Injector) (*rabbitmq.Consumer[dto.UserFeedUpdateTask], error) {
 			consumer, err := rabbitmq.NewConsumer[dto.UserFeedUpdateTask](
 				cfg.RabbitMQ.URL(),
-				taskhandler.UserFeedUpdateQueueName,
+				rabbitmq.UserFeedUpdateQueueName,
+				"",
 				do.MustInvoke[*userupdatefeed.Handler](i).Handle,
 				do.MustInvoke[*zap.Logger](i),
 			)
@@ -257,7 +324,8 @@ func provideTaskConsumers(c *Container, cfg *config.Config) {
 		func(i *do.Injector) (*rabbitmq.Consumer[dto.UserFeedChunkedUpdateTask], error) {
 			consumer, err := rabbitmq.NewConsumer[dto.UserFeedChunkedUpdateTask](
 				cfg.RabbitMQ.URL(),
-				taskhandler.UserFeedUpdateChunkedQueueName,
+				rabbitmq.UserFeedUpdateChunkedQueueName,
+				"",
 				do.MustInvoke[*userupdatefeedchunked.Handler](i).Handle,
 				do.MustInvoke[*zap.Logger](i),
 			)
@@ -266,6 +334,32 @@ func provideTaskConsumers(c *Container, cfg *config.Config) {
 			}
 
 			c.addShutdown(nameUserFeedChunkedTaskConsumer, sdSimple(consumer.Close))
+
+			return consumer, nil
+		},
+	)
+
+	do.Provide(c.i, func(i *do.Injector) (*postcreatedchunked.Handler, error) {
+		return postcreatedchunked.New(
+			do.MustInvoke[*melody.Melody](i),
+		)
+	})
+
+	do.ProvideNamed(
+		c.i, namePostCreatedChunkedTaskConsumer,
+		func(i *do.Injector) (*rabbitmq.Consumer[dto.PostCreatedChunkedTask], error) {
+			consumer, err := rabbitmq.NewConsumer[dto.PostCreatedChunkedTask](
+				cfg.RabbitMQ.URL(),
+				"",
+				rabbitmq.PostCreatedExchangeName,
+				do.MustInvoke[*postcreatedchunked.Handler](i).Handle,
+				do.MustInvoke[*zap.Logger](i),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			c.addShutdown(namePostCreatedChunkedTaskConsumer, sdSimple(consumer.Close))
 
 			return consumer, nil
 		},

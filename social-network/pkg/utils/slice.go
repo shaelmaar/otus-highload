@@ -25,6 +25,17 @@ func SafeSliceRange[T any](in []T, start, end int) []T {
 	return in[start:end]
 }
 
+// SliceToMapAsKeys возвращает мапу с ключами из элементов слайса и значениями struct{}.
+func SliceToMapAsKeys[T comparable](slice []T) map[T]struct{} {
+	m := make(map[T]struct{}, len(slice))
+
+	for _, elem := range slice {
+		m[elem] = struct{}{}
+	}
+
+	return m
+}
+
 func ChunkSlice[T any](ctx context.Context, slice []T, size int) <-chan []T {
 	ch := make(chan []T)
 
