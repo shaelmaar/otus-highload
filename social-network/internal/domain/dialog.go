@@ -10,8 +10,11 @@ import (
 
 type DialogRepository interface {
 	CreateDialogMessage(ctx context.Context, message DialogMessage) error
+	CreateDialogMessageTarantool(_ context.Context, message DialogMessage) error
 	GetMessagesByDialog(
 		ctx context.Context, dialogID primitive.ObjectID) ([]DialogMessage, error)
+	GetMessagesByDialogTarantool(
+		_ context.Context, dialogID primitive.ObjectID) ([]DialogMessage, error)
 }
 
 type DialogMessage struct {

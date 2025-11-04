@@ -19,6 +19,7 @@ type Config struct {
 	Database        Database        `envconfig:"DB"`
 	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
 	MongoDatabase   MongoDatabase   `envconfig:"MONGO_DB"`
+	TarantoolDB     TarantoolDB     `envconfig:"TARANTOOL_DB"`
 
 	Valkey Valkey `envconfig:"VALKEY"`
 

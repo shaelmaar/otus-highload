@@ -10,7 +10,7 @@ import (
 
 func (u *UseCases) GetMessagesList(
 	ctx context.Context, input dto.DialogMessagesListGet) ([]domain.DialogMessage, error) {
-	messages, err := u.repo.GetMessagesByDialog(ctx, generateDialogID(input.From, input.To))
+	messages, err := u.repo.GetMessagesByDialogTarantool(ctx, generateDialogID(input.From, input.To))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get messages by dialog: %w", err)
 	}

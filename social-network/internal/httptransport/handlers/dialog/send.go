@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
@@ -31,7 +32,8 @@ func (h *Handlers) Send(
 		Time: time.Now(),
 	})
 	if err != nil {
-		//nolint:nilerr // возвращается 500 ответ.
+		h.logger.Error("internal error", zap.Error(err))
+
 		return serverhttp.PostDialogUserIdSend500JSONResponse{
 			N5xxJSONResponse: handlers.Simple500JSONResponse(""),
 		}, nil

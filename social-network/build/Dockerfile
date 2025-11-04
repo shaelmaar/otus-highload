@@ -18,6 +18,7 @@ COPY mongo/migrations /out/mongo/migrations
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     go build \
+    -tags go_tarantool_ssl_disable \
     -o /out/social-network cmd/*.go
 
 FROM golang:1.24-alpine AS release

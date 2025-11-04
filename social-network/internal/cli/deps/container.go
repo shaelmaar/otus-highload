@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
+	"github.com/tarantool/go-tarantool"
 	"github.com/valkey-io/valkey-go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -34,6 +35,7 @@ const (
 	namePgxPool                        = "pgxPool"
 	nameReplicaPgxPool                 = "replicaPgxPool"
 	nameMongoDialogsDB                 = "mongoDialogsDB"
+	nameTarantoolConnection            = "tarantoolConnection"
 	nameQuerier                        = "querier"
 	nameReplicaQuerier                 = "replicaQuerier"
 	nameDebugServer                    = "debugServer"
@@ -129,6 +131,17 @@ func New(ctx context.Context) (*Container, error) {
 		c.addShutdown(nameMongoDialogsDB, db.Client().Disconnect)
 
 		return db, nil
+	})
+
+	do.Provide(i, func(i *do.Injector) (*tarantool.Connection, error) {
+		conn, err := provideTarantoolConnection(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(nameTarantoolConnection, sdWithoutCtx(conn.Close))
+
+		return conn, nil
 	})
 
 	do.ProvideNamed(i, nameQuerier, func(i *do.Injector) (pg.QuerierTX, error) {

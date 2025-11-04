@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	_ "github.com/tarantool/go-tarantool/uuid"
 	_ "go.uber.org/automaxprocs"
 
 	"github.com/shaelmaar/otus-highload/social-network/cmd/internal"

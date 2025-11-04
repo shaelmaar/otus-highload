@@ -93,3 +93,10 @@ func (d MongoDatabase) Validate() error {
 
 	return nil
 }
+
+type TarantoolDB struct {
+	Host string `envconfig:"HOST" required:"true"`
+	Port string `envconfig:"PORT" required:"true"`
+	User string `envconfig:"USER" required:"true"`
+	Pass string `envconfig:"PASS"`
+}

@@ -19,7 +19,7 @@ generate-server: build-docker-oapi
 		otus-highload-oapi-gen -config oapi-codegen.yaml ./docs/openapi/swagger.yaml > ./gen/serverhttp/server.go
 
 lint:
-	@docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.2.1-alpine golangci-lint run --timeout 5m ./...
+	@docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.6.1-alpine golangci-lint run --build-tags go_tarantool_ssl_disable --timeout 5m ./...
 
 generate-sql: build-docker-gowrap
 	@docker run --rm -v ${PWD}:${PWD} -w ${PWD} sqlc/sqlc:1.28.0 generate

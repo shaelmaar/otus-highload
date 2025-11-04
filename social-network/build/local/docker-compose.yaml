@@ -2,6 +2,7 @@ volumes:
   db-vol:
   valkey-vol:
   rabbitmq-vol:
+  tarantool-vol:
   mongo-vol:
 
 services:
@@ -67,6 +68,19 @@ services:
       - mongo-vol:/data/db
       - ../mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
 
+  tarantool:
+    image: tarantool/tarantool:2.11
+    container_name: tarantool
+    ports:
+      - "3301:3301"
+    environment:
+      TARANTOOL_USER_NAME: ${TARANTOOL_USER}
+      TARANTOOL_USER_PASSWORD: ${TARANTOOL_PASS}
+    volumes:
+      - tarantool-vol:/var/lib/tarantool
+      - ../tarantool/init.lua:/opt/tarantool/init.lua
+    command: tarantool /opt/tarantool/init.lua
+
   migrate:
     build:
       context: ../..
@@ -75,6 +89,8 @@ services:
       db:
         condition: service_healthy
       mongodb:
+        condition: service_started
+      tarantool:
         condition: service_started
       rabbitmq:
         condition: service_started

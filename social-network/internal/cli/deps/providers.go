@@ -3,11 +3,13 @@ package deps
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/olahol/melody"
 	"github.com/samber/do"
+	"github.com/tarantool/go-tarantool"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
@@ -219,7 +221,10 @@ func provideRepositories(i *do.Injector) {
 	})
 
 	do.Provide(i, func(i *do.Injector) (domain.DialogRepository, error) {
-		return dialogRepo.New(do.MustInvokeNamed[*mongo.Database](i, nameMongoDialogsDB))
+		return dialogRepo.New(
+			do.MustInvokeNamed[*mongo.Database](i, nameMongoDialogsDB),
+			do.MustInvoke[*tarantool.Connection](i),
+		)
 	})
 
 	do.Provide(i, func(i *do.Injector) (domain.LoadTestRepository, error) {
@@ -472,4 +477,18 @@ func provideMongoDialogsDB(ctx context.Context, cfg *config.Config) (*mongo.Data
 	db := client.Database(cfg.MongoDatabase.Name)
 
 	return db, nil
+}
+
+func provideTarantoolConnection(cfg *config.Config) (*tarantool.Connection, error) {
+	conn, err := tarantool.Connect(net.JoinHostPort(cfg.TarantoolDB.Host, cfg.TarantoolDB.Port),
+		//nolint:exhaustruct // остальное по умолчанию.
+		tarantool.Opts{
+			User: cfg.TarantoolDB.User,
+			Pass: cfg.TarantoolDB.Pass,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to TarantoolDB: %w", err)
+	}
+
+	return conn, nil
 }

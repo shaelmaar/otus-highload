@@ -14,7 +14,7 @@ import (
 )
 
 func (u *UseCases) CreateMessage(ctx context.Context, input dto.DialogCreateMessage) error {
-	err := u.repo.CreateDialogMessage(ctx, domain.DialogMessage{
+	err := u.repo.CreateDialogMessageTarantool(ctx, domain.DialogMessage{
 		From:      input.From,
 		To:        input.To,
 		DialogID:  generateDialogID(input.From, input.To),
