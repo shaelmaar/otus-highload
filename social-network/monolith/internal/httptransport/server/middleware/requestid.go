@@ -4,6 +4,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 )
 
 const headerXRequestID = "X-Request-Id"
@@ -31,6 +33,10 @@ func requestIDWithConfig(config requestIDConfig) echo.MiddlewareFunc {
 			}
 
 			c.Response().Header().Set(headerXRequestID, rid)
+
+			ctx := ctxcarrier.InjectRequestID(c.Request().Context(), rid)
+
+			c.SetRequest(c.Request().WithContext(ctx))
 
 			return next(c)
 		}

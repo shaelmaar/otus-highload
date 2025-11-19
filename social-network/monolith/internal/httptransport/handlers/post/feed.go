@@ -6,9 +6,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
@@ -16,7 +16,7 @@ import (
 func (h *Handlers) Feed(
 	ctx context.Context,
 	req serverhttp.GetPostFeedRequestObject) (serverhttp.GetPostFeedResponseObject, error) {
-	userID, _ := auth.ExtractUserIDFromContext(ctx)
+	userID, _ := ctxcarrier.ExtractUserID(ctx)
 
 	const (
 		maxOffset = 1000

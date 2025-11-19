@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v4"
 	"github.com/olahol/melody"
 	"github.com/samber/do"
 	"github.com/tarantool/go-tarantool"
@@ -15,10 +16,13 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	postfeedCache "github.com/shaelmaar/otus-highload/social-network/internal/cache/postfeed"
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	grpcHandlers "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/handlers"
+	grpcServer "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
@@ -26,7 +30,7 @@ import (
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
 	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
 	wsHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/ws"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
+	httpServer "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
@@ -145,30 +149,96 @@ func provideMelody(c *Container) {
 	})
 }
 
-func provideWSServer(i *do.Injector, cfg *config.Config) {
-	do.Provide(i, func(i *do.Injector) (*wsHandlers.Handlers, error) {
+func provideWSServer(c *Container, cfg *config.Config) {
+	do.Provide(c.i, func(i *do.Injector) (*wsHandlers.Handlers, error) {
 		return wsHandlers.New(
 			do.MustInvoke[*melody.Melody](i),
 			do.MustInvoke[*zap.Logger](i),
 		)
 	})
 
-	do.Provide(i, func(i *do.Injector) (*handlers.WSHandlers, error) {
+	do.Provide(c.i, func(i *do.Injector) (*handlers.WSHandlers, error) {
 		return handlers.NewWSHandlers(
 			do.MustInvoke[*wsHandlers.Handlers](i),
 		)
 	})
 
-	do.ProvideNamed(i, nameWSServer, func(i *do.Injector) (*server.Server, error) {
-		return server.New(
-			server.RegisterWSHandlers(do.MustInvoke[*handlers.WSHandlers](i)),
-			&server.Options{
+	do.ProvideNamed(c.i, nameWSServer, func(i *do.Injector) (*httpServer.Server, error) {
+		s, err := httpServer.New(
+			httpServer.RegisterWSHandlers(do.MustInvoke[*handlers.WSHandlers](i)),
+			&httpServer.Options{
 				Debug:       false,
 				ServiceName: cfg.ServiceName,
 				Logger:      do.MustInvoke[*zap.Logger](i),
 				AuthService: do.MustInvoke[*auth.Service](i),
 			},
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init websocket server: %w", err)
+		}
+
+		c.addShutdown(nameWSServer, s.Stop)
+
+		return s, nil
+	})
+}
+
+func provideHTTPServer(c *Container, cfg *config.Config) {
+	do.ProvideNamed(c.i, nameHTTPServer, func(i *do.Injector) (*httpServer.Server, error) {
+		logger := do.MustInvoke[*zap.Logger](i)
+
+		s, err := httpServer.NewStrict(
+			func(e *echo.Echo) {
+				si := serverhttp.NewStrictHandler(handlers.NewHandlers(
+					do.MustInvoke[*userHandlers.Handlers](i),
+					do.MustInvoke[*postHandlers.Handlers](i),
+					do.MustInvoke[*friendHandlers.Handlers](i),
+					do.MustInvoke[*dialogHandlers.Handlers](i),
+					do.MustInvoke[*loadTestHandlers.Handlers](i),
+				), nil)
+
+				serverhttp.RegisterHandlers(e, si)
+			},
+
+			&httpServer.Options{
+				Debug:       false,
+				ServiceName: cfg.ServiceName,
+				Logger:      logger,
+				AuthService: do.MustInvoke[*auth.Service](i),
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init http server: %w", err)
+		}
+
+		c.addShutdown(nameHTTPServer, s.Stop)
+
+		return s, nil
+	})
+}
+
+func provideGRPCHandlers(i *do.Injector) {
+	do.Provide(i, func(i *do.Injector) (*grpcHandlers.Handlers, error) {
+		return grpcHandlers.New(do.MustInvoke[*auth.Service](i))
+	})
+}
+
+func provideGRPCServer(c *Container) {
+	do.ProvideNamed(c.i, nameGRPCServer, func(i *do.Injector) (*grpcServer.Server, error) {
+		s, err := grpcServer.New(&grpcServer.NewServerOptions{
+			Logger:            do.MustInvoke[*zap.Logger](i),
+			GRPCHandlers:      do.MustInvoke[*grpcHandlers.Handlers](i),
+			Validator:         nil,
+			UnaryInterceptors: nil,
+			ServerOptions:     nil,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to init grpc server: %w", err)
+		}
+
+		c.addShutdown(nameGRPCServer, sdSimple(s.Stop))
+
+		return s, nil
 	})
 }
 

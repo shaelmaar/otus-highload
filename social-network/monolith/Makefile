@@ -12,11 +12,23 @@ build-docker-oapi:
 build-docker-gowrap:
 	@docker build -f Dockerfile-gowrap -t otus-highload-gowrap .
 
+build-docker-protoc-grpc:
+	@docker build -f Dockerfile-protoc-grpc -t otus-highload-protoc-grpc .
+
 generate-server: build-docker-oapi
 	@docker run --rm \
 		-v $(PWD):/app \
 		-w /app \
 		otus-highload-oapi-gen -config oapi-codegen.yaml ./docs/openapi/swagger.yaml > ./gen/serverhttp/server.go
+
+generate-grpc-server: build-docker-protoc-grpc
+	@docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		otus-highload-protoc-grpc -I docs/protobuf/grpc/server \
+		  --go_out=gen/servergrpc --go_opt=paths=source_relative \
+		  --go-grpc_out=gen/servergrpc --go-grpc_opt=paths=source_relative \
+		  docs/protobuf/grpc/server/*.proto
 
 lint:
 	@docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.6.1-alpine golangci-lint run --build-tags go_tarantool_ssl_disable --timeout 5m ./...

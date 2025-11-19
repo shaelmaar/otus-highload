@@ -8,7 +8,8 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
+	grpcServer "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server"
+	httpServer "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
 )
@@ -25,12 +26,16 @@ func (c *Container) Logger() *zap.Logger {
 	return do.MustInvoke[*zap.Logger](c.i)
 }
 
-func (c *Container) HTTPServer() *server.Server {
-	return do.MustInvoke[*server.Server](c.i)
+func (c *Container) HTTPServer() *httpServer.Server {
+	return do.MustInvokeNamed[*httpServer.Server](c.i, nameHTTPServer)
 }
 
-func (c *Container) WSServer() *server.Server {
-	return do.MustInvokeNamed[*server.Server](c.i, nameWSServer)
+func (c *Container) GRPCServer() *grpcServer.Server {
+	return do.MustInvokeNamed[*grpcServer.Server](c.i, nameGRPCServer)
+}
+
+func (c *Container) WSServer() *httpServer.Server {
+	return do.MustInvokeNamed[*httpServer.Server](c.i, nameWSServer)
 }
 
 func (c *Container) DebugServer() *echo.Echo {

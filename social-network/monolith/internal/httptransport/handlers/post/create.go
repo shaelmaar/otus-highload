@@ -6,15 +6,15 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 )
 
 func (h *Handlers) Create(
 	ctx context.Context,
 	req serverhttp.PostPostCreateRequestObject) (serverhttp.PostPostCreateResponseObject, error) {
-	userID, _ := auth.ExtractUserIDFromContext(ctx)
+	userID, _ := ctxcarrier.ExtractUserID(ctx)
 
 	if req.Body.Text == "" {
 		return serverhttp.PostPostCreate400Response{}, nil

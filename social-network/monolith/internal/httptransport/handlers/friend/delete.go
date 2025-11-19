@@ -7,14 +7,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 )
 
 func (h *Handlers) Delete(ctx context.Context,
 	req serverhttp.PutFriendDeleteUserIdRequestObject) (serverhttp.PutFriendDeleteUserIdResponseObject, error) {
-	userID, _ := auth.ExtractUserIDFromContext(ctx)
+	userID, _ := ctxcarrier.ExtractUserID(ctx)
 
 	friendID, err := uuid.Parse(req.UserId)
 	if err != nil {

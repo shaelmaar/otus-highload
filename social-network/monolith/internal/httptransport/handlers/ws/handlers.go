@@ -7,7 +7,7 @@ import (
 	"github.com/olahol/melody"
 	"go.uber.org/zap"
 
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
@@ -32,7 +32,7 @@ func New(m *melody.Melody, logger *zap.Logger) (*Handlers, error) {
 }
 
 func (h *Handlers) WS(c echo.Context) error {
-	userID, _ := auth.ExtractUserIDFromContext(c.Request().Context())
+	userID, _ := ctxcarrier.ExtractUserID(c.Request().Context())
 
 	err := h.m.HandleRequestWithKeys(c.Response(), c.Request(), map[string]any{
 		"user_id": userID,

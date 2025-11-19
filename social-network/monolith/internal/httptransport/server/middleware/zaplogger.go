@@ -65,14 +65,19 @@ func zapLoggerMiddleware(config zapLoggerConfig, l *zap.Logger) echo.MiddlewareF
 				statusCode = getEchoErrorStatusCode(err)
 			}
 
-			errField := zap.Skip()
 			if err != nil {
-				errField = zap.Error(err)
+				logger.FromEchoContext(c).Error(
+					"request",
+					zap.Error(err),
+					zap.Int("status_code", statusCode),
+					zap.Duration("duration", time.Since(startTime)),
+				)
+
+				return err
 			}
 
 			logger.FromEchoContext(c).Info(
 				"request",
-				errField,
 				zap.Int("status_code", statusCode),
 				zap.Duration("duration", time.Since(startTime)),
 			)

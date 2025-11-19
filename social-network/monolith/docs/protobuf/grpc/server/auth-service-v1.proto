@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package auth_v1;
+
+option go_package = "gen/servergrpc";
+
+// AuthServiceV1 сервис аутентификации пользователей.
+service AuthServiceV1 {
+  // ValidateToken валидация токена пользователя.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenReply) {}
+}
+
+// ValidateTokenRequest тело запроса валидации токена пользователя.
+message ValidateTokenRequest {
+  // token токен пользователя.
+  string token = 1; // @gotags: validate:"required"
+}
+
+// GetAreasReply тело ответа на получение зон по идентификаторам.
+message ValidateTokenReply {
+  // ERR_INFO_REASON коды ошибок.
+  enum ERR_INFO_REASON {
+    UNSPECIFIED = 0;
+    // запрос некорректный
+    VALIDATION_ERROR = 1;
+    // токен просрочен.
+    TOKEN_EXPIRED = 2;
+    // токен невалидный.
+    TOKEN_INVALID = 3;
+  }
+
+  // user_id идентификатор пользователя.
+  string user_id = 1;
+}

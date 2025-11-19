@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 )
 
 //nolint:gochecknoglobals // слайс константой не сделать.
@@ -66,7 +66,7 @@ func authWithConfig(cfg authConfig) echo.MiddlewareFunc {
 				})
 			}
 
-			ctx := auth.InjectUserIDToContext(c.Request().Context(), userUUID)
+			ctx := ctxcarrier.InjectUserID(c.Request().Context(), userUUID)
 
 			c.SetRequest(c.Request().WithContext(ctx))
 

@@ -14,19 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
-	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/debugserver"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
-	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
-	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
-	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
-	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
-	userHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/user"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
-	"github.com/shaelmaar/otus-highload/social-network/internal/service/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/valkeyprovider"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/transaction"
 )
@@ -48,6 +39,8 @@ const (
 	namePostCreatedChunkedTaskConsumer = "postCreatedChunkedTaskConsumer"
 	nameMelodyWebsocket                = "melodyWebsocket"
 	nameWSServer                       = "wsServer"
+	nameGRPCServer                     = "grpcServer"
+	nameHTTPServer                     = "httpServer"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -211,40 +204,14 @@ func New(ctx context.Context) (*Container, error) {
 	provideMelody(c)
 
 	//nolint:contextcheck // контекст тут никак не передается.
-	provideWSServer(i, cfg)
+	provideWSServer(c, cfg)
 
 	//nolint:contextcheck // контекст тут никак не передается.
-	do.Provide(i, func(i *do.Injector) (*server.Server, error) {
-		logger := do.MustInvoke[*zap.Logger](i)
+	provideHTTPServer(c, cfg)
 
-		httpServer, err := server.NewStrict(
-			func(e *echo.Echo) {
-				si := serverhttp.NewStrictHandler(handlers.NewHandlers(
-					do.MustInvoke[*userHandlers.Handlers](i),
-					do.MustInvoke[*postHandlers.Handlers](i),
-					do.MustInvoke[*friendHandlers.Handlers](i),
-					do.MustInvoke[*dialogHandlers.Handlers](i),
-					do.MustInvoke[*loadTestHandlers.Handlers](i),
-				), nil)
+	provideGRPCHandlers(i)
 
-				serverhttp.RegisterHandlers(e, si)
-			},
-
-			&server.Options{
-				Debug:       false,
-				ServiceName: cfg.ServiceName,
-				Logger:      logger,
-				AuthService: do.MustInvoke[*auth.Service](i),
-			},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to init http server: %w", err)
-		}
-
-		c.addShutdown("httpServer", httpServer.Stop)
-
-		return httpServer, nil
-	})
+	provideGRPCServer(c)
 
 	return c, nil
 }

@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
@@ -17,7 +17,7 @@ func (h *Handlers) Get(
 	ctx context.Context,
 	req serverhttp.GetDialogUserIdListRequestObject,
 ) (serverhttp.GetDialogUserIdListResponseObject, error) {
-	fromUserID, _ := auth.ExtractUserIDFromContext(ctx)
+	fromUserID, _ := ctxcarrier.ExtractUserID(ctx)
 
 	toUserID, err := uuid.Parse(req.UserId)
 	if err != nil {

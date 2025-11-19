@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
+	"github.com/shaelmaar/otus-highload/social-network/internal/ctxcarrier"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/auth"
 	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 )
 
@@ -17,7 +17,7 @@ func (h *Handlers) Send(
 	ctx context.Context,
 	req serverhttp.PostDialogUserIdSendRequestObject,
 ) (serverhttp.PostDialogUserIdSendResponseObject, error) {
-	fromUserID, _ := auth.ExtractUserIDFromContext(ctx)
+	fromUserID, _ := ctxcarrier.ExtractUserID(ctx)
 
 	toUserID, err := uuid.Parse(req.UserId)
 	if err != nil {

@@ -46,6 +46,14 @@ func NewServeCommand(container *deps.Container) *cobra.Command {
 				}
 			}()
 
+			grpcServer := container.GRPCServer()
+
+			go func() {
+				if err := grpcServer.Serve(&cfg.GRPCServerListenPort); err != nil {
+					serverLogger.Fatal("failed to start gRPC server", zap.Error(err))
+				}
+			}()
+
 			<-cmd.Context().Done()
 
 			serverLogger.Info("shutdown service")
