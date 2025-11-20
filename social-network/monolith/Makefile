@@ -1,4 +1,4 @@
-.PHONY: generate-server lint generate-sql generate-async-api
+.PHONY: generate-http-server generate-grpc-server generate-grpc-dialogs-client lint generate-sql generate-async-api
 .PHONY: run-local stop-local stop-local-clear-volumes
 .PHONY: run-local-infra stop-local-infra stop-local-infra-clear-volumes
 .PHONY: run-simple-db-replicas stop-simple-db-replicas stop-simple-db-replicas-clear-volumes
@@ -15,7 +15,7 @@ build-docker-gowrap:
 build-docker-protoc-grpc:
 	@docker build -f Dockerfile-protoc-grpc -t otus-highload-protoc-grpc .
 
-generate-server: build-docker-oapi
+generate-http-server: build-docker-oapi
 	@docker run --rm \
 		-v $(PWD):/app \
 		-w /app \
@@ -29,6 +29,15 @@ generate-grpc-server: build-docker-protoc-grpc
 		  --go_out=gen/servergrpc --go_opt=paths=source_relative \
 		  --go-grpc_out=gen/servergrpc --go-grpc_opt=paths=source_relative \
 		  docs/protobuf/grpc/server/*.proto
+
+generate-grpc-dialogs-client: build-docker-protoc-grpc
+	@docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		otus-highload-protoc-grpc -I docs/protobuf/grpc/dialogs \
+		  --go_out=gen/clientgrpc/dialogs --go_opt=paths=source_relative \
+		  --go-grpc_out=gen/clientgrpc/dialogs --go-grpc_opt=paths=source_relative \
+		  docs/protobuf/grpc/dialogs/*.proto
 
 lint:
 	@docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.6.1-alpine golangci-lint run --build-tags go_tarantool_ssl_disable --timeout 5m ./...

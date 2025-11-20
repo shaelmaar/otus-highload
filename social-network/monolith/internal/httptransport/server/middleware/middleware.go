@@ -10,8 +10,6 @@ type Options struct {
 	Logger         *zap.Logger
 	TokenValidator func(tokenString string) (string, error)
 
-	RequestIDGenerator func() string
-
 	RequestIDSkipper func(echo.Context) bool
 	MetricsSkipper   func(echo.Context) bool
 	TraceSkipper     func(echo.Context) bool
@@ -22,10 +20,10 @@ func Use(e *echo.Echo, opt *Options) {
 	e.Use(
 		recovery(),
 		requestIDWithConfig(requestIDConfig{Skipper: opt.RequestIDSkipper}),
-		authWithConfig(authConfig{tokenValidator: opt.TokenValidator}),
 		zapLoggerMiddleware(zapLoggerConfig{
 			ServiceName: opt.ServiceName,
 			Skipper:     opt.LoggerSkipper,
 		}, opt.Logger),
+		authWithConfig(authConfig{tokenValidator: opt.TokenValidator}),
 	)
 }

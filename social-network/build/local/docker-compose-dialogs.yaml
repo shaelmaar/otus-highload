@@ -1,0 +1,35 @@
+networks:
+  social-network-shared-net:
+    external: true
+
+volumes:
+  dialogs-tarantool-vol:
+
+services:
+  dialogs_tarantool:
+    image: tarantool/tarantool:2.11
+    environment:
+      TARANTOOL_USER_NAME: ${DIALOGS_TARANTOOL_USER}
+      TARANTOOL_USER_PASSWORD: ${DIALOGS_TARANTOOL_PASS}
+    volumes:
+      - dialogs-tarantool-vol:/var/lib/tarantool
+      - ../tarantool/init.lua:/opt/tarantool/init.lua
+    command: tarantool /opt/tarantool/init.lua
+    networks:
+      - social-network-shared-net
+
+  dialogs_app:
+    build:
+      context: ../../dialogs
+      dockerfile: ../build/Dockerfile-dialogs
+    depends_on:
+      - dialogs_tarantool
+    env_file:
+      - .env.dialogs
+    ports:
+      - "${DIALOGS_APP_PORT}:8080"
+      - "${DIALOGS_APP_DEBUG_PORT}:8081"
+      - "${DIALOGS_GRPC_PORT}:8082"
+    restart: unless-stopped
+    networks:
+      - social-network-shared-net

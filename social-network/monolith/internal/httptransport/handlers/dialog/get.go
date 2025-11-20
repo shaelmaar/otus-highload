@@ -38,9 +38,9 @@ func (h *Handlers) Get(
 
 	dialogMessages := utils.MapSlice(messages, func(m domain.DialogMessage) serverhttp.DialogMessage {
 		return serverhttp.DialogMessage{
-			From: m.From.String(),
+			From: m.From,
 			Text: m.Text,
-			To:   m.To.String(),
+			To:   m.To,
 		}
 	})
 

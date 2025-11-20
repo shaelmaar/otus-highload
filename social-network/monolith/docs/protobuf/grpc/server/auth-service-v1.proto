@@ -13,10 +13,10 @@ service AuthServiceV1 {
 // ValidateTokenRequest тело запроса валидации токена пользователя.
 message ValidateTokenRequest {
   // token токен пользователя.
-  string token = 1; // @gotags: validate:"required"
+  string token = 1;
 }
 
-// GetAreasReply тело ответа на получение зон по идентификаторам.
+// ValidateTokenReply тело ответа на валидацию токена пользователя.
 message ValidateTokenReply {
   // ERR_INFO_REASON коды ошибок.
   enum ERR_INFO_REASON {

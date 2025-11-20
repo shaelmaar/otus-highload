@@ -9,9 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
-	"github.com/tarantool/go-tarantool"
 	"github.com/valkey-io/valkey-go"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
@@ -41,6 +39,9 @@ const (
 	nameWSServer                       = "wsServer"
 	nameGRPCServer                     = "grpcServer"
 	nameHTTPServer                     = "httpServer"
+	nameHTTPHandlers                   = "httpHandlers"
+	nameGRPCHandlers                   = "grpcHandlers"
+	nameDialogsGRPCClient              = "dialogsGRPCClient"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -113,28 +114,6 @@ func New(ctx context.Context) (*Container, error) {
 		c.addShutdown(nameReplicaPgxPool, sdSimple(pool.Close))
 
 		return pool, nil
-	})
-
-	do.ProvideNamed(i, nameMongoDialogsDB, func(i *do.Injector) (*mongo.Database, error) {
-		db, err := provideMongoDialogsDB(ctx, cfg)
-		if err != nil {
-			return nil, err
-		}
-
-		c.addShutdown(nameMongoDialogsDB, db.Client().Disconnect)
-
-		return db, nil
-	})
-
-	do.Provide(i, func(i *do.Injector) (*tarantool.Connection, error) {
-		conn, err := provideTarantoolConnection(cfg)
-		if err != nil {
-			return nil, err
-		}
-
-		c.addShutdown(nameTarantoolConnection, sdWithoutCtx(conn.Close))
-
-		return conn, nil
 	})
 
 	do.ProvideNamed(i, nameQuerier, func(i *do.Injector) (pg.QuerierTX, error) {
@@ -212,6 +191,8 @@ func New(ctx context.Context) (*Container, error) {
 	provideGRPCHandlers(i)
 
 	provideGRPCServer(c)
+
+	provideGRPCClients(i, cfg)
 
 	return c, nil
 }

@@ -3,20 +3,18 @@ package dialog
 import (
 	"errors"
 
-	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
+	dialogsGRPC "github.com/shaelmaar/otus-highload/social-network/gen/clientgrpc/dialogs"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
 )
 
 type UseCases struct {
-	repo domain.DialogRepository
+	dialogsClient dialogsGRPC.DialogsServiceV1Client
 }
 
-func New(repo domain.DialogRepository) (*UseCases, error) {
-	if utils.IsNil(repo) {
-		return nil, errors.New("repository is nil")
+func New(dialogsClient dialogsGRPC.DialogsServiceV1Client) (*UseCases, error) {
+	if utils.IsNil(dialogsClient) {
+		return nil, errors.New("dialogs client is nil")
 	}
 
-	return &UseCases{
-		repo: repo,
-	}, nil
+	return &UseCases{dialogsClient: dialogsClient}, nil
 }

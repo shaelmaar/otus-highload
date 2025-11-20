@@ -11,6 +11,11 @@ import (
 
 func (h *Handlers) ValidateToken(
 	_ context.Context, req *servergrpc.ValidateTokenRequest) (*servergrpc.ValidateTokenReply, error) {
+	if req.Token == "" {
+		return nil, grpcServer.GRPCValidationError(servergrpc.ValidateTokenReply_VALIDATION_ERROR,
+			errors.New("token is required"))
+	}
+
 	userID, err := h.auth.ValidateToken(req.Token)
 
 	switch {

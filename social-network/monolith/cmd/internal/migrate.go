@@ -18,7 +18,6 @@ import (
 func NewMigrateCommand(container *deps.Container) *cobra.Command {
 	var (
 		mgPostgres *migrate.Migrate
-		mgMongo    *migrate.Migrate
 	)
 
 	cfg := container.Config()
@@ -46,14 +45,6 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 				return fmt.Errorf("failed to init postgres migrations: %w", err)
 			}
 
-			mgMongo, err = migrate.New(
-				"file://mongo/migrations",
-				cfg.MongoDatabase.URI(),
-			)
-			if err != nil {
-				return fmt.Errorf("failed to init mongo migrations: %w", err)
-			}
-
 			return nil
 		},
 
@@ -77,16 +68,6 @@ func NewMigrateCommand(container *deps.Container) *cobra.Command {
 				return fmt.Errorf("failed to apply postgres migrations: %w", err)
 			case err == nil:
 				logger.Info("postgres migrations applied")
-			}
-
-			err = mgMongo.Up()
-			switch {
-			case errors.Is(err, migrate.ErrNoChange):
-				logger.Info("no mongo migrations found")
-			case err != nil:
-				return fmt.Errorf("failed to apply mongo migrations: %w", err)
-			case err == nil:
-				logger.Info("mongo migrations applied")
 			}
 
 			return nil

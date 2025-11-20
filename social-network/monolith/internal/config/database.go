@@ -2,8 +2,6 @@ package config
 
 import (
 	"fmt"
-	"net"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -65,33 +63,6 @@ func (d Database) PgxConfig() (*pgxpool.Config, error) {
 type ReplicaDatabase struct {
 	Enabled bool `envconfig:"ENABLED"`
 	Database
-}
-
-type MongoDatabase struct {
-	Host         string `envconfig:"HOST" required:"true"`
-	Port         int    `envconfig:"PORT" required:"true"`
-	User         string `envconfig:"USER"`
-	Password     string `envconfig:"PASSWORD"`
-	Name         string `envconfig:"NAME" required:"true"`
-	AuthRequired bool   `envconfig:"AUTH_REQUIRED" default:"true"`
-}
-
-func (d MongoDatabase) URI() string {
-	hostPort := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
-
-	if d.AuthRequired {
-		return fmt.Sprintf("mongodb://%s:%s@%s/%s", d.User, d.Password, hostPort, d.Name)
-	}
-
-	return fmt.Sprintf("mongodb://%s/%s", hostPort, d.Name)
-}
-
-func (d MongoDatabase) Validate() error {
-	if d.AuthRequired && (d.User == "" || d.Password == "") {
-		return fmt.Errorf("invalid user/password")
-	}
-
-	return nil
 }
 
 type TarantoolDB struct {

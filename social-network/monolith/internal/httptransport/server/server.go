@@ -103,14 +103,13 @@ func New(handlersRegistrator func(*echo.Echo), opt *Options, optionalFn ...Optio
 	}
 
 	middleware.Use(e, &middleware.Options{
-		ServiceName:        opt.ServiceName,
-		Logger:             opt.Logger,
-		TokenValidator:     opt.AuthService.ValidateToken,
-		RequestIDGenerator: nil,
-		RequestIDSkipper:   optionalOpts.RequestIDSkipper,
-		MetricsSkipper:     optionalOpts.MetricsSkipper,
-		TraceSkipper:       optionalOpts.TraceSkipper,
-		LoggerSkipper:      optionalOpts.LoggerSkipper,
+		ServiceName:      opt.ServiceName,
+		Logger:           opt.Logger,
+		TokenValidator:   opt.AuthService.ValidateToken,
+		RequestIDSkipper: optionalOpts.RequestIDSkipper,
+		MetricsSkipper:   optionalOpts.MetricsSkipper,
+		TraceSkipper:     optionalOpts.TraceSkipper,
+		LoggerSkipper:    optionalOpts.LoggerSkipper,
 	})
 
 	for _, mw := range optionalOpts.Middleware {

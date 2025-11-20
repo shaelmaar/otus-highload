@@ -80,7 +80,7 @@ func (ValidateTokenReply_ERR_INFO_REASON) EnumDescriptor() ([]byte, []int) {
 type ValidateTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// token токен пользователя.
-	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"` // @gotags: validate:"required"
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,7 +122,7 @@ func (x *ValidateTokenRequest) GetToken() string {
 	return ""
 }
 
-// GetAreasReply тело ответа на получение зон по идентификаторам.
+// ValidateTokenReply тело ответа на валидацию токена пользователя.
 type ValidateTokenReply struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// user_id идентификатор пользователя.

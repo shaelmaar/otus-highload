@@ -109,15 +109,23 @@
 
 ## Для разработки
 
-1. Генерация веб-сервера на основе спецификации OpenAPI 3, лежащей в docs/openapi/swagger.yaml:
+1. Генерация http-сервера на основе спецификации OpenAPI 3, лежащей в docs/openapi/swagger.yaml:
    ```bash
-   make generate-server
+   make generate-http-server
    ```
-2. Генерация sql из схемы бд (postgresql/migrations) и запросов (postgresql/queries):
+2. Генерация grpc-сервера на основе protobuf контрактов, лежащих в docs/protobuf/grpc/server:
+   ```bash
+   make generate-grpc-server
+   ```
+3. Генерация grpc-клиента dialogs сервиса на основе protobuf контрактов, лежащих в docs/protobuf/grpc/dialogs:
+   ```bash
+   make generate-grpc-dialogs-client
+   ```
+4. Генерация sql из схемы бд (postgresql/migrations) и запросов (postgresql/queries):
    ```bash
    make generate-sql
    ```
-3. Линтер golang-кода:
+5. Линтер golang-кода:
    ```bash
    make lint
    ```

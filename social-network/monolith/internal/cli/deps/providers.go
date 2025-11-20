@@ -3,16 +3,12 @@ package deps
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/olahol/melody"
 	"github.com/samber/do"
-	"github.com/tarantool/go-tarantool"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -21,9 +17,10 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
+	dialogsGRPCClient "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/clients/dialogs"
 	grpcHandlers "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/handlers"
 	grpcServer "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server"
-	"github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
+	httpHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
 	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
@@ -34,7 +31,6 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/metrics"
 	"github.com/shaelmaar/otus-highload/social-network/internal/queries/pg"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
-	dialogRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/dialog"
 	friendRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/friend"
 	loadTestRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/loadtest"
 	postRepo "github.com/shaelmaar/otus-highload/social-network/internal/repository/post"
@@ -86,7 +82,8 @@ func provideUseCases(i *do.Injector) {
 	})
 
 	do.Provide(i, func(i *do.Injector) (*dialogUseCases.UseCases, error) {
-		return dialogUseCases.New(do.MustInvoke[domain.DialogRepository](i))
+		return dialogUseCases.New(
+			do.MustInvokeNamed[*dialogsGRPCClient.Client](i, nameDialogsGRPCClient).DialogsService)
 	})
 
 	do.Provide(i, func(i *do.Injector) (*loadTestUseCases.UseCases, error) {
@@ -134,6 +131,17 @@ func provideHTTPHandlers(i *do.Injector) {
 			do.MustInvoke[*zap.Logger](i),
 		)
 	})
+
+	do.ProvideNamed[*httpHandlers.Handlers](i, nameHTTPHandlers,
+		func(i *do.Injector) (*httpHandlers.Handlers, error) {
+			return httpHandlers.NewHandlers(
+				do.MustInvoke[*userHandlers.Handlers](i),
+				do.MustInvoke[*postHandlers.Handlers](i),
+				do.MustInvoke[*friendHandlers.Handlers](i),
+				do.MustInvoke[*dialogHandlers.Handlers](i),
+				do.MustInvoke[*loadTestHandlers.Handlers](i),
+			)
+		})
 }
 
 func provideMelody(c *Container) {
@@ -157,15 +165,15 @@ func provideWSServer(c *Container, cfg *config.Config) {
 		)
 	})
 
-	do.Provide(c.i, func(i *do.Injector) (*handlers.WSHandlers, error) {
-		return handlers.NewWSHandlers(
+	do.Provide(c.i, func(i *do.Injector) (*httpHandlers.WSHandlers, error) {
+		return httpHandlers.NewWSHandlers(
 			do.MustInvoke[*wsHandlers.Handlers](i),
 		)
 	})
 
 	do.ProvideNamed(c.i, nameWSServer, func(i *do.Injector) (*httpServer.Server, error) {
 		s, err := httpServer.New(
-			httpServer.RegisterWSHandlers(do.MustInvoke[*handlers.WSHandlers](i)),
+			httpServer.RegisterWSHandlers(do.MustInvoke[*httpHandlers.WSHandlers](i)),
 			&httpServer.Options{
 				Debug:       false,
 				ServiceName: cfg.ServiceName,
@@ -189,13 +197,9 @@ func provideHTTPServer(c *Container, cfg *config.Config) {
 
 		s, err := httpServer.NewStrict(
 			func(e *echo.Echo) {
-				si := serverhttp.NewStrictHandler(handlers.NewHandlers(
-					do.MustInvoke[*userHandlers.Handlers](i),
-					do.MustInvoke[*postHandlers.Handlers](i),
-					do.MustInvoke[*friendHandlers.Handlers](i),
-					do.MustInvoke[*dialogHandlers.Handlers](i),
-					do.MustInvoke[*loadTestHandlers.Handlers](i),
-				), nil)
+				si := serverhttp.NewStrictHandler(
+					do.MustInvokeNamed[*httpHandlers.Handlers](i, nameHTTPHandlers),
+					nil)
 
 				serverhttp.RegisterHandlers(e, si)
 			},
@@ -218,7 +222,7 @@ func provideHTTPServer(c *Container, cfg *config.Config) {
 }
 
 func provideGRPCHandlers(i *do.Injector) {
-	do.Provide(i, func(i *do.Injector) (*grpcHandlers.Handlers, error) {
+	do.ProvideNamed(i, nameGRPCHandlers, func(i *do.Injector) (*grpcHandlers.Handlers, error) {
 		return grpcHandlers.New(do.MustInvoke[*auth.Service](i))
 	})
 }
@@ -227,7 +231,7 @@ func provideGRPCServer(c *Container) {
 	do.ProvideNamed(c.i, nameGRPCServer, func(i *do.Injector) (*grpcServer.Server, error) {
 		s, err := grpcServer.New(&grpcServer.NewServerOptions{
 			Logger:            do.MustInvoke[*zap.Logger](i),
-			GRPCHandlers:      do.MustInvoke[*grpcHandlers.Handlers](i),
+			GRPCHandlers:      do.MustInvokeNamed[*grpcHandlers.Handlers](i, nameGRPCHandlers),
 			Validator:         nil,
 			UnaryInterceptors: nil,
 			ServerOptions:     nil,
@@ -287,13 +291,6 @@ func provideRepositories(i *do.Injector) {
 		return friendRepo.New(
 			do.MustInvokeNamed[pg.QuerierTX](i, nameQuerier),
 			do.MustInvokeNamed[pg.QuerierTX](i, nameReplicaQuerier),
-		)
-	})
-
-	do.Provide(i, func(i *do.Injector) (domain.DialogRepository, error) {
-		return dialogRepo.New(
-			do.MustInvokeNamed[*mongo.Database](i, nameMongoDialogsDB),
-			do.MustInvoke[*tarantool.Connection](i),
 		)
 	})
 
@@ -441,6 +438,24 @@ func provideTaskConsumers(c *Container, cfg *config.Config) {
 	)
 }
 
+func provideGRPCClients(i *do.Injector, cfg *config.Config) {
+	do.ProvideNamed[*dialogsGRPCClient.Client](
+		i, nameDialogsGRPCClient, func(i *do.Injector) (*dialogsGRPCClient.Client, error) {
+			c, err := dialogsGRPCClient.NewGRPCClient(&dialogsGRPCClient.NewClientOptions{
+				GRPCAddr:          cfg.DialogsGRPCClient.Host,
+				TLS:               cfg.DialogsGRPCClient.TLS,
+				Timeout:           &cfg.DialogsGRPCClient.Timeout,
+				UnaryInterceptors: nil,
+				DialOptions:       nil,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to init dialogs grpc client: %w", err)
+			}
+
+			return c, nil
+		})
+}
+
 func provideConfig() (*config.Config, error) {
 	cfg, err := config.FromEnv()
 	if err != nil {
@@ -529,36 +544,4 @@ func provideReplicaPostgresql(ctx context.Context, cfg *config.Config, pgxPool *
 	}
 
 	return pool, nil
-}
-
-func provideMongoDialogsDB(ctx context.Context, cfg *config.Config) (*mongo.Database, error) {
-	clientOptions := options.Client().ApplyURI(cfg.MongoDatabase.URI())
-
-	client, err := mongo.Connect(ctx, clientOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
-	}
-
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
-	}
-
-	db := client.Database(cfg.MongoDatabase.Name)
-
-	return db, nil
-}
-
-func provideTarantoolConnection(cfg *config.Config) (*tarantool.Connection, error) {
-	conn, err := tarantool.Connect(net.JoinHostPort(cfg.TarantoolDB.Host, cfg.TarantoolDB.Port),
-		//nolint:exhaustruct // остальное по умолчанию.
-		tarantool.Opts{
-			User: cfg.TarantoolDB.User,
-			Pass: cfg.TarantoolDB.Pass,
-		})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to TarantoolDB: %w", err)
-	}
-
-	return conn, nil
 }

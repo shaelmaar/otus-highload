@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/pkg/utils"
@@ -65,25 +66,25 @@ func NewHandlers(
 	friend FriendHandlers,
 	dialog DialogHandlers,
 	loadTest LoadTestHandlers,
-) *Handlers {
+) (*Handlers, error) {
 	if utils.IsNil(user) {
-		panic("user handlers are nil")
+		return nil, errors.New("user handlers are nil")
 	}
 
 	if utils.IsNil(post) {
-		panic("post handlers are nil")
+		return nil, errors.New("post handlers are nil")
 	}
 
 	if utils.IsNil(friend) {
-		panic("friend handlers are nil")
+		return nil, errors.New("friend handlers are nil")
 	}
 
 	if utils.IsNil(dialog) {
-		panic("dialog handlers are nil")
+		return nil, errors.New("dialog handlers are nil")
 	}
 
 	if utils.IsNil(loadTest) {
-		panic("load test handlers are nil")
+		return nil, errors.New("load test handlers are nil")
 	}
 
 	return &Handlers{
@@ -92,5 +93,5 @@ func NewHandlers(
 		friend:   friend,
 		dialog:   dialog,
 		loadTest: loadTest,
-	}
+	}, nil
 }

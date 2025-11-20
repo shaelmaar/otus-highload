@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package dialogs_v1;
+
+option go_package = "gen/servergrpc";
+
+import "google/protobuf/timestamp.proto";
+
+// DialogsServiceV1 сервис диалогов пользователей.
+service DialogsServiceV1 {
+  // CreateMessage создание сообщения диалога пользователей.
+  rpc CreateMessage(CreateMessageRequest) returns (CreateMessageReply) {}
+  // GetDialogMessages получение списка сообщений диалога.
+  rpc GetDialogMessages(GetDialogMessagesRequest) returns (GetDialogMessagesReply) {}
+}
+
+// CreateMessageRequest тело запроса создания сообщения.
+message CreateMessageRequest {
+  // from идентификатор пользователя отправителя.
+  string from = 1;
+  // to идентификатор пользователя получателя.
+  string to = 2;
+  // text текст сообщения.
+  string text = 3;
+}
+
+// CreateMessageReply тело ответа на создание сообщения.
+message CreateMessageReply {
+  // ERR_INFO_REASON коды ошибок.
+  enum ERR_INFO_REASON {
+    UNSPECIFIED = 0;
+    // запрос некорректный
+    VALIDATION_ERROR = 1;
+  }
+}
+
+// GetDialogMessagesRequest тело запроса получения списка сообщений диалога.
+message GetDialogMessagesRequest {
+  // from идентификатор пользователя отправителя.
+  string from = 1;
+  // to идентификатор пользователя получателя.
+  string to = 2;
+}
+
+// GetDialogMessagesReply тело ответа получения списка сообщений диалога.
+message GetDialogMessagesReply {
+  // ERR_INFO_REASON коды ошибок.
+  enum ERR_INFO_REASON {
+    UNSPECIFIED = 0;
+    // запрос некорректный
+    VALIDATION_ERROR = 1;
+  }
+
+  repeated DialogMessage messages = 1;
+}
+
+message DialogMessage {
+  // from идентификатор пользователя отправителя.
+  string from = 1;
+  // to идентификатор пользователя получателя.
+  string to = 2;
+  // text текст сообщения.
+  string text = 3;
+  // created_at - время создания сообщения.
+  google.protobuf.Timestamp created_at = 4;
+}
+

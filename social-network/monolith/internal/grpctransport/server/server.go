@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/shaelmaar/otus-highload/social-network/gen/servergrpc"
-	"github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/interceptors"
+	"github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server/interceptors"
 )
 
 type GRPCHandlers interface {
@@ -107,10 +107,6 @@ type gRPCAuthServiceService struct {
 
 func (s *gRPCAuthServiceService) ValidateToken(
 	ctx context.Context, req *servergrpc.ValidateTokenRequest) (*servergrpc.ValidateTokenReply, error) {
-	if err := validate(s.Validator, req, servergrpc.ValidateTokenReply_VALIDATION_ERROR); err != nil {
-		return nil, err
-	}
-
 	return s.Handlers.ValidateToken(ctx, req)
 }
 
@@ -172,14 +168,6 @@ func gRPCError[T GRPCErrors](code codes.Code, reason T, serviceErr error) error 
 	}
 
 	return st.Err()
-}
-
-func validate[T GRPCErrors](v *validator.Validate, req any, reason T) error {
-	if err := v.Struct(req); err != nil {
-		return GRPCValidationError(reason, err)
-	}
-
-	return nil
 }
 
 func unaryInterceptors(l *zap.Logger, serviceName string) []grpc.UnaryServerInterceptor {

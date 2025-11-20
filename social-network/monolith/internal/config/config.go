@@ -19,14 +19,14 @@ type Config struct {
 
 	Database        Database        `envconfig:"DB"`
 	ReplicaDatabase ReplicaDatabase `envconfig:"REPLICA_DB"`
-	MongoDatabase   MongoDatabase   `envconfig:"MONGO_DB"`
-	TarantoolDB     TarantoolDB     `envconfig:"TARANTOOL_DB"`
 
 	Valkey Valkey `envconfig:"VALKEY"`
 
 	RabbitMQ RabbitMQ `envconfig:"RABBITMQ"`
 
 	Auth Auth `envconfig:"AUTH"`
+
+	DialogsGRPCClient DialogsGRPCClient `envconfig:"DIALOGS_GRPC_CLIENT"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }
@@ -44,10 +44,6 @@ func FromEnv() (*Config, error) {
 
 	if err := cfg.Auth.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid auth config: %w", err)
-	}
-
-	if err := cfg.MongoDatabase.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid mongo config: %w", err)
 	}
 
 	return cfg, nil
