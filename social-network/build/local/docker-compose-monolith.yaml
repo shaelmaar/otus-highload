@@ -3,29 +3,62 @@ networks:
     external: true
 
 volumes:
-  monolith-db-vol:
+  monolith-db-master-vol:
+  monolith-db-slave1-vol:
+  monolith-db-slave2-vol:
   monolith-valkey-vol:
   monolith-rabbitmq-vol:
 
 services:
-  monolith_db:
+  monolith_db_master:
     image: postgres:17-alpine
+    hostname: monolith_db_master
     environment:
       POSTGRES_USER: ${MONOLITH_DB_USER}
       POSTGRES_PASSWORD: ${MONOLITH_DB_PASSWORD}
       POSTGRES_DB: ${MONOLITH_DB_NAME}
-    ports:
-      - "${MONOLITH_DB_PORT}:5432"
+      DOCKER_SUBNET: ${DOCKER_SUBNET}
+    expose:
+      - "5432"
     volumes:
-      - monolith-db-vol:/var/lib/postgresql/data
-      - ../postgresql/ext-trgm.sql:/docker-entrypoint-initdb.d/init.sql
+      - monolith-db-master-vol:/var/lib/postgresql/data
+      - ./pg_master:/docker-entrypoint-initdb.d
+    networks:
+      - social-network-shared-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${MONOLITH_DB_USER}" ]
       interval: 5s
       timeout: 30s
       retries: 5
+
+  monolith_db_slave1: &monolith_db_slave
+    build:
+      context: ./pg_slave
+    hostname: monolith_db_slave1
+    environment:
+      POSTGRES_USER: ${MONOLITH_DB_USER}
+      POSTGRES_PASSWORD: ${MONOLITH_DB_PASSWORD}
+      POSTGRES_DB: ${MONOLITH_DB_NAME}
+    depends_on:
+      monolith_db_master:
+        condition: service_healthy
+    volumes:
+      - monolith-db-slave1-vol:/var/lib/postgresql/data
     networks:
       - social-network-shared-net
+    expose:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${MONOLITH_DB_USER}" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+
+  monolith_db_slave2:
+    <<: *monolith_db_slave
+    hostname: monolith_db_slave2
+    volumes:
+      - monolith-db-slave2-vol:/var/lib/postgresql/data
 
   monolith_valkey:
     image: valkey/valkey:7.2-alpine
@@ -59,16 +92,25 @@ services:
       - monolith-rabbitmq-vol:/var/lib/rabbitmq
     networks:
       - social-network-shared-net
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 100s
+      retries: 20
 
   monolith_migrate:
     build:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      monolith_db:
+      monolith_db_master:
+        condition: service_healthy
+      monolith_db_slave1:
+        condition: service_healthy
+      monolith_db_slave2:
         condition: service_healthy
       monolith_rabbitmq:
-        condition: service_started
+        condition: service_healthy
       monolith_valkey:
         condition: service_healthy
     env_file:
@@ -78,28 +120,37 @@ services:
     networks:
       - social-network-shared-net
 
-  monolith_app:
+  monolith_app_1: &monolith_app
     build:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
+    hostname: monolith_app_1
     depends_on:
       - monolith_migrate
     env_file:
       - .env.monolith
-    ports:
-      - "${MONOLITH_APP_PORT}:8080"
-      - "${MONOLITH_APP_DEBUG_PORT}:8081"
-      - "${MONOLITH_GRPC_PORT}:8082"
+    expose:
+      - "8080"
     restart: unless-stopped
     networks:
       - social-network-shared-net
+
+  monolith_app_2:
+    <<: *monolith_app
+    hostname: monolith_app_2
+
+  monolith_app_3:
+    <<: *monolith_app
+    hostname: monolith_app_3
 
   monolith_task_processor:
     build:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      - monolith_app
+      - monolith_app_1
+      - monolith_app_2
+      - monolith_app_3
     env_file:
       - .env.monolith
     command: [ "task_process" ]
@@ -112,11 +163,13 @@ services:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      - monolith_app
+      - monolith_app_1
+      - monolith_app_2
+      - monolith_app_3
     env_file:
       - .env.monolith
-    ports:
-      - "${MONOLITH_WEBSOCKET_PORT}:8080"
+    expose:
+      - "8080"
     command: [ "ws_serve" ]
     restart: unless-stopped
     networks:
