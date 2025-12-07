@@ -5,9 +5,8 @@ info:
 paths:
   /dialog/{user_id}/send:
     post:
-      security:
-        - bearerAuth: [ ]
       parameters:
+        - $ref: '#/components/parameters/UserIDHeader'
         - name: user_id
           schema:
             $ref: '#/components/schemas/UserId'
@@ -37,9 +36,8 @@ paths:
 
   /dialog/{user_id}/list:
     get:
-      security:
-        - bearerAuth: [ ]
       parameters:
+        - $ref: '#/components/parameters/UserIDHeader'
         - name: user_id
           schema:
             $ref: '#/components/schemas/UserId'
@@ -64,6 +62,14 @@ paths:
           $ref: '#/components/responses/5xx'
 
 components:
+  parameters:
+    UserIDHeader:
+      name: X-User-Id
+      in: header
+      description: Идентификатор пользователя
+      required: true
+      schema:
+        type: string
   responses:
     '400':
       description: Невалидные данные ввода
@@ -121,8 +127,4 @@ components:
         text:
           $ref: '#/components/schemas/DialogMessageText'
 
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      description: Авторизация по токену, который был получен в методе /login
+

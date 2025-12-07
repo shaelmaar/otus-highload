@@ -14,10 +14,6 @@ import (
 	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
-const (
-	BearerAuthScopes = "bearerAuth.Scopes"
-)
-
 // DialogMessage defines model for DialogMessage.
 type DialogMessage struct {
 	// From Идентификатор пользователя
@@ -36,6 +32,9 @@ type DialogMessageText = string
 // UserId Идентификатор пользователя
 type UserId = string
 
+// UserIDHeader defines model for UserIDHeader.
+type UserIDHeader = string
+
 // N5xx defines model for 5xx.
 type N5xx struct {
 	// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
@@ -48,10 +47,22 @@ type N5xx struct {
 	RequestId *string `json:"request_id,omitempty"`
 }
 
+// GetDialogUserIdListParams defines parameters for GetDialogUserIdList.
+type GetDialogUserIdListParams struct {
+	// XUserId Идентификатор пользователя
+	XUserId UserIDHeader `json:"X-User-Id"`
+}
+
 // PostDialogUserIdSendJSONBody defines parameters for PostDialogUserIdSend.
 type PostDialogUserIdSendJSONBody struct {
 	// Text Текст сообщения
 	Text DialogMessageText `json:"text"`
+}
+
+// PostDialogUserIdSendParams defines parameters for PostDialogUserIdSend.
+type PostDialogUserIdSendParams struct {
+	// XUserId Идентификатор пользователя
+	XUserId UserIDHeader `json:"X-User-Id"`
 }
 
 // PostDialogUserIdSendJSONRequestBody defines body for PostDialogUserIdSend for application/json ContentType.
@@ -61,10 +72,10 @@ type PostDialogUserIdSendJSONRequestBody PostDialogUserIdSendJSONBody
 type ServerInterface interface {
 
 	// (GET /dialog/{user_id}/list)
-	GetDialogUserIdList(ctx echo.Context, userId UserId) error
+	GetDialogUserIdList(ctx echo.Context, userId UserId, params GetDialogUserIdListParams) error
 
 	// (POST /dialog/{user_id}/send)
-	PostDialogUserIdSend(ctx echo.Context, userId UserId) error
+	PostDialogUserIdSend(ctx echo.Context, userId UserId, params PostDialogUserIdSendParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -83,10 +94,30 @@ func (w *ServerInterfaceWrapper) GetDialogUserIdList(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{})
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetDialogUserIdListParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId UserIDHeader
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-User-Id, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithLocation("simple", false, "X-User-Id", runtime.ParamLocationHeader, valueList[0], &XUserId)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-User-Id: %s", err))
+		}
+
+		params.XUserId = XUserId
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-User-Id is required, but not found"))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetDialogUserIdList(ctx, userId)
+	err = w.Handler.GetDialogUserIdList(ctx, userId, params)
 	return err
 }
 
@@ -101,10 +132,30 @@ func (w *ServerInterfaceWrapper) PostDialogUserIdSend(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{})
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostDialogUserIdSendParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId UserIDHeader
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-User-Id, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithLocation("simple", false, "X-User-Id", runtime.ParamLocationHeader, valueList[0], &XUserId)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-User-Id: %s", err))
+		}
+
+		params.XUserId = XUserId
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-User-Id is required, but not found"))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostDialogUserIdSend(ctx, userId)
+	err = w.Handler.PostDialogUserIdSend(ctx, userId, params)
 	return err
 }
 
@@ -167,6 +218,7 @@ type N5xxJSONResponse struct {
 
 type GetDialogUserIdListRequestObject struct {
 	UserId UserId `json:"user_id"`
+	Params GetDialogUserIdListParams
 }
 
 type GetDialogUserIdListResponseObject interface {
@@ -234,6 +286,7 @@ func (response GetDialogUserIdList503JSONResponse) VisitGetDialogUserIdListRespo
 
 type PostDialogUserIdSendRequestObject struct {
 	UserId UserId `json:"user_id"`
+	Params PostDialogUserIdSendParams
 	Body   *PostDialogUserIdSendJSONRequestBody
 }
 
@@ -322,10 +375,11 @@ type strictHandler struct {
 }
 
 // GetDialogUserIdList operation middleware
-func (sh *strictHandler) GetDialogUserIdList(ctx echo.Context, userId UserId) error {
+func (sh *strictHandler) GetDialogUserIdList(ctx echo.Context, userId UserId, params GetDialogUserIdListParams) error {
 	var request GetDialogUserIdListRequestObject
 
 	request.UserId = userId
+	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetDialogUserIdList(ctx.Request().Context(), request.(GetDialogUserIdListRequestObject))
@@ -347,10 +401,11 @@ func (sh *strictHandler) GetDialogUserIdList(ctx echo.Context, userId UserId) er
 }
 
 // PostDialogUserIdSend operation middleware
-func (sh *strictHandler) PostDialogUserIdSend(ctx echo.Context, userId UserId) error {
+func (sh *strictHandler) PostDialogUserIdSend(ctx echo.Context, userId UserId, params PostDialogUserIdSendParams) error {
 	var request PostDialogUserIdSendRequestObject
 
 	request.UserId = userId
+	request.Params = params
 
 	var body PostDialogUserIdSendJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
