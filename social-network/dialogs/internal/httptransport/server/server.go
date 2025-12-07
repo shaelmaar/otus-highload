@@ -20,14 +20,9 @@ type Server struct {
 	Logger *zap.Logger
 }
 
-type AuthService interface {
-	ValidateToken(ctx context.Context, tokenString string) (string, error)
-}
-
 type Options struct {
 	ServiceName string
 	Debug       bool
-	AuthService AuthService
 	Logger      *zap.Logger
 }
 
@@ -105,7 +100,6 @@ func New(handlersRegistrator func(*echo.Echo), opt *Options, optionalFn ...Optio
 	middleware.Use(e, &middleware.Options{
 		ServiceName:      opt.ServiceName,
 		Logger:           opt.Logger,
-		TokenValidator:   opt.AuthService.ValidateToken,
 		RequestIDSkipper: optionalOpts.RequestIDSkipper,
 		MetricsSkipper:   optionalOpts.MetricsSkipper,
 		TraceSkipper:     optionalOpts.TraceSkipper,

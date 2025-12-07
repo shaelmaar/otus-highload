@@ -1,16 +1,13 @@
 package middleware
 
 import (
-	"context"
-
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
 type Options struct {
-	ServiceName    string
-	Logger         *zap.Logger
-	TokenValidator func(context.Context, string) (string, error)
+	ServiceName string
+	Logger      *zap.Logger
 
 	RequestIDSkipper func(echo.Context) bool
 	MetricsSkipper   func(echo.Context) bool
@@ -26,6 +23,6 @@ func Use(e *echo.Echo, opt *Options) {
 			ServiceName: opt.ServiceName,
 			Skipper:     opt.LoggerSkipper,
 		}, opt.Logger),
-		authWithConfig(authConfig{tokenValidator: opt.TokenValidator}),
+		auth(),
 	)
 }

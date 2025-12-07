@@ -1,3 +1,4 @@
+//nolint:dupl // по какой-то причине считается дубликатом.
 package handlers
 
 import (

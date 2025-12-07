@@ -14,14 +14,10 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/gen/serverhttp"
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/domain"
-	monolithGPRCClient "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/grpctransport/clients/monolith"
-	grpcHandlers "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/grpctransport/handlers"
-	grpcServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/grpctransport/server"
 	httpHanders "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/handlers"
 	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/handlers/dialog"
 	httpServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/server"
 	dialogRepo "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/repository/dialog"
-	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/service/auth"
 	dialogUseCases "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/usecase/dialog"
 )
 
@@ -58,7 +54,6 @@ func provideHTTPServer(c *Container, cfg *config.Config) {
 				Debug:       false,
 				ServiceName: cfg.ServiceName,
 				Logger:      do.MustInvoke[*zap.Logger](i),
-				AuthService: do.MustInvoke[*auth.Service](i),
 			},
 		)
 		if err != nil {
@@ -68,55 +63,6 @@ func provideHTTPServer(c *Container, cfg *config.Config) {
 		c.addShutdown(nameHTTPServer, s.Stop)
 
 		return s, nil
-	})
-}
-
-func provideGRPCHandlers(i *do.Injector) {
-	do.ProvideNamed(i, nameGRPCHandlers, func(i *do.Injector) (*grpcHandlers.Handlers, error) {
-		return grpcHandlers.New(do.MustInvoke[*dialogUseCases.UseCases](i))
-	})
-}
-
-func provideGRPCServer(c *Container) {
-	do.ProvideNamed(c.i, nameGRPCServer, func(i *do.Injector) (*grpcServer.Server, error) {
-		s, err := grpcServer.New(&grpcServer.NewServerOptions{
-			Logger:            do.MustInvoke[*zap.Logger](i),
-			GRPCHandlers:      do.MustInvokeNamed[*grpcHandlers.Handlers](i, nameGRPCHandlers),
-			Validator:         nil,
-			UnaryInterceptors: nil,
-			ServerOptions:     nil,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to init grpc server: %w", err)
-		}
-
-		c.addShutdown(nameGRPCServer, sdSimple(s.Stop))
-
-		return s, nil
-	})
-}
-
-func provideGRPCClients(i *do.Injector, cfg *config.Config) {
-	do.ProvideNamed[*monolithGPRCClient.Client](
-		i, nameMonolithGRPCClient, func(i *do.Injector) (*monolithGPRCClient.Client, error) {
-			c, err := monolithGPRCClient.NewGRPCClient(&monolithGPRCClient.NewClientOptions{
-				GRPCAddr:          cfg.MonolithGRPCClient.Host,
-				TLS:               cfg.MonolithGRPCClient.TLS,
-				Timeout:           &cfg.MonolithGRPCClient.Timeout,
-				UnaryInterceptors: nil,
-				DialOptions:       nil,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to init monolith grpc client: %w", err)
-			}
-
-			return c, nil
-		})
-}
-
-func provideAuthService(i *do.Injector) {
-	do.Provide(i, func(i *do.Injector) (*auth.Service, error) {
-		return auth.New(do.MustInvokeNamed[*monolithGPRCClient.Client](i, nameMonolithGRPCClient).AuthService)
 	})
 }
 

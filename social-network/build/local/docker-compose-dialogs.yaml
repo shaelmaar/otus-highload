@@ -22,14 +22,13 @@ services:
     build:
       context: ../../dialogs
       dockerfile: ../build/Dockerfile-dialogs
+    hostname: dialogs_app
     depends_on:
       - dialogs_tarantool
     env_file:
       - .env.dialogs
-    ports:
-      - "${DIALOGS_APP_PORT}:8080"
-      - "${DIALOGS_APP_DEBUG_PORT}:8081"
-      - "${DIALOGS_GRPC_PORT}:8082"
+    expose:
+      - "8080"
     restart: unless-stopped
     networks:
       - social-network-shared-net

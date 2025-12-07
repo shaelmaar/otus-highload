@@ -37,10 +37,8 @@ const (
 	namePostCreatedChunkedTaskConsumer = "postCreatedChunkedTaskConsumer"
 	nameMelodyWebsocket                = "melodyWebsocket"
 	nameWSServer                       = "wsServer"
-	nameGRPCServer                     = "grpcServer"
 	nameHTTPServer                     = "httpServer"
 	nameHTTPHandlers                   = "httpHandlers"
-	nameGRPCHandlers                   = "grpcHandlers"
 	nameDialogsGRPCClient              = "dialogsGRPCClient"
 )
 
@@ -187,12 +185,6 @@ func New(ctx context.Context) (*Container, error) {
 
 	//nolint:contextcheck // контекст тут никак не передается.
 	provideHTTPServer(c, cfg)
-
-	provideGRPCHandlers(i)
-
-	provideGRPCServer(c)
-
-	provideGRPCClients(i, cfg)
 
 	return c, nil
 }

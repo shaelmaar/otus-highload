@@ -22,21 +22,6 @@ const (
 // BirthDate Дата рождения
 type BirthDate = openapi_types.Date
 
-// DialogMessage defines model for DialogMessage.
-type DialogMessage struct {
-	// From Идентификатор пользователя
-	From UserId `json:"from"`
-
-	// Text Текст сообщения
-	Text DialogMessageText `json:"text"`
-
-	// To Идентификатор пользователя
-	To UserId `json:"to"`
-}
-
-// DialogMessageText Текст сообщения
-type DialogMessageText = string
-
 // Post Пост пользователя
 type Post struct {
 	// AuthorUserId Идентификатор пользователя
@@ -89,12 +74,6 @@ type N5xx struct {
 
 	// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
 	RequestId *string `json:"request_id,omitempty"`
-}
-
-// PostDialogUserIdSendJSONBody defines parameters for PostDialogUserIdSend.
-type PostDialogUserIdSendJSONBody struct {
-	// Text Текст сообщения
-	Text DialogMessageText `json:"text"`
 }
 
 // PostLoadtestWriteJSONBody defines parameters for PostLoadtestWrite.
@@ -151,9 +130,6 @@ type GetUserSearchParams struct {
 	LastName string `form:"last_name" json:"last_name"`
 }
 
-// PostDialogUserIdSendJSONRequestBody defines body for PostDialogUserIdSend for application/json ContentType.
-type PostDialogUserIdSendJSONRequestBody PostDialogUserIdSendJSONBody
-
 // PostLoadtestWriteJSONRequestBody defines body for PostLoadtestWrite for application/json ContentType.
 type PostLoadtestWriteJSONRequestBody PostLoadtestWriteJSONBody
 
@@ -171,12 +147,6 @@ type PostUserRegisterJSONRequestBody PostUserRegisterJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
-	// (GET /dialog/{user_id}/list)
-	GetDialogUserIdList(ctx echo.Context, userId UserId) error
-
-	// (POST /dialog/{user_id}/send)
-	PostDialogUserIdSend(ctx echo.Context, userId UserId) error
 
 	// (PUT /friend/delete/{user_id})
 	PutFriendDeleteUserId(ctx echo.Context, userId UserId) error
@@ -213,47 +183,14 @@ type ServerInterface interface {
 
 	// (GET /user/search)
 	GetUserSearch(ctx echo.Context, params GetUserSearchParams) error
+
+	// (GET /validate_token)
+	GetValidateToken(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
-}
-
-// GetDialogUserIdList converts echo context to params.
-func (w *ServerInterfaceWrapper) GetDialogUserIdList(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId UserId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "user_id", runtime.ParamLocationPath, ctx.Param("user_id"), &userId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetDialogUserIdList(ctx, userId)
-	return err
-}
-
-// PostDialogUserIdSend converts echo context to params.
-func (w *ServerInterfaceWrapper) PostDialogUserIdSend(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "user_id" -------------
-	var userId UserId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "user_id", runtime.ParamLocationPath, ctx.Param("user_id"), &userId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostDialogUserIdSend(ctx, userId)
-	return err
 }
 
 // PutFriendDeleteUserId converts echo context to params.
@@ -443,6 +380,17 @@ func (w *ServerInterfaceWrapper) GetUserSearch(ctx echo.Context) error {
 	return err
 }
 
+// GetValidateToken converts echo context to params.
+func (w *ServerInterfaceWrapper) GetValidateToken(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetValidateToken(ctx)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -471,8 +419,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/dialog/:user_id/list", wrapper.GetDialogUserIdList)
-	router.POST(baseURL+"/dialog/:user_id/send", wrapper.PostDialogUserIdSend)
 	router.PUT(baseURL+"/friend/delete/:user_id", wrapper.PutFriendDeleteUserId)
 	router.PUT(baseURL+"/friend/set/:user_id", wrapper.PutFriendSetUserId)
 	router.POST(baseURL+"/loadtest/write", wrapper.PostLoadtestWrite)
@@ -485,6 +431,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/user/get/:id", wrapper.GetUserGetId)
 	router.POST(baseURL+"/user/register", wrapper.PostUserRegister)
 	router.GET(baseURL+"/user/search", wrapper.GetUserSearch)
+	router.GET(baseURL+"/validate_token", wrapper.GetValidateToken)
 
 }
 
@@ -510,140 +457,6 @@ type N5xxJSONResponse struct {
 	}
 
 	Headers N5xxResponseHeaders
-}
-
-type GetDialogUserIdListRequestObject struct {
-	UserId UserId `json:"user_id"`
-}
-
-type GetDialogUserIdListResponseObject interface {
-	VisitGetDialogUserIdListResponse(w http.ResponseWriter) error
-}
-
-type GetDialogUserIdList200JSONResponse []DialogMessage
-
-func (response GetDialogUserIdList200JSONResponse) VisitGetDialogUserIdListResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetDialogUserIdList400Response = N400Response
-
-func (response GetDialogUserIdList400Response) VisitGetDialogUserIdListResponse(w http.ResponseWriter) error {
-	w.WriteHeader(400)
-	return nil
-}
-
-type GetDialogUserIdList401Response = N401Response
-
-func (response GetDialogUserIdList401Response) VisitGetDialogUserIdListResponse(w http.ResponseWriter) error {
-	w.WriteHeader(401)
-	return nil
-}
-
-type GetDialogUserIdList500JSONResponse struct{ N5xxJSONResponse }
-
-func (response GetDialogUserIdList500JSONResponse) VisitGetDialogUserIdListResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response.Body)
-}
-
-type GetDialogUserIdList503ResponseHeaders struct {
-	RetryAfter int
-}
-
-type GetDialogUserIdList503JSONResponse struct {
-	Body struct {
-		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
-		Code *int `json:"code,omitempty"`
-
-		// Message Описание ошибки
-		Message string `json:"message"`
-
-		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
-		RequestId *string `json:"request_id,omitempty"`
-	}
-	Headers GetDialogUserIdList503ResponseHeaders
-}
-
-func (response GetDialogUserIdList503JSONResponse) VisitGetDialogUserIdListResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
-	w.WriteHeader(503)
-
-	return json.NewEncoder(w).Encode(response.Body)
-}
-
-type PostDialogUserIdSendRequestObject struct {
-	UserId UserId `json:"user_id"`
-	Body   *PostDialogUserIdSendJSONRequestBody
-}
-
-type PostDialogUserIdSendResponseObject interface {
-	VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error
-}
-
-type PostDialogUserIdSend200Response struct {
-}
-
-func (response PostDialogUserIdSend200Response) VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
-}
-
-type PostDialogUserIdSend400Response = N400Response
-
-func (response PostDialogUserIdSend400Response) VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error {
-	w.WriteHeader(400)
-	return nil
-}
-
-type PostDialogUserIdSend401Response = N401Response
-
-func (response PostDialogUserIdSend401Response) VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error {
-	w.WriteHeader(401)
-	return nil
-}
-
-type PostDialogUserIdSend500JSONResponse struct{ N5xxJSONResponse }
-
-func (response PostDialogUserIdSend500JSONResponse) VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response.Body)
-}
-
-type PostDialogUserIdSend503ResponseHeaders struct {
-	RetryAfter int
-}
-
-type PostDialogUserIdSend503JSONResponse struct {
-	Body struct {
-		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
-		Code *int `json:"code,omitempty"`
-
-		// Message Описание ошибки
-		Message string `json:"message"`
-
-		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
-		RequestId *string `json:"request_id,omitempty"`
-	}
-	Headers PostDialogUserIdSend503ResponseHeaders
-}
-
-func (response PostDialogUserIdSend503JSONResponse) VisitPostDialogUserIdSendResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
-	w.WriteHeader(503)
-
-	return json.NewEncoder(w).Encode(response.Body)
 }
 
 type PutFriendDeleteUserIdRequestObject struct {
@@ -1483,14 +1296,79 @@ func (response GetUserSearch503JSONResponse) VisitGetUserSearchResponse(w http.R
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetValidateTokenRequestObject struct {
+}
+
+type GetValidateTokenResponseObject interface {
+	VisitGetValidateTokenResponse(w http.ResponseWriter) error
+}
+
+type GetValidateToken204ResponseHeaders struct {
+	XUserId interface{}
+}
+
+type GetValidateToken204Response struct {
+	Headers GetValidateToken204ResponseHeaders
+}
+
+func (response GetValidateToken204Response) VisitGetValidateTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("x-user-id", fmt.Sprint(response.Headers.XUserId))
+	w.WriteHeader(204)
+	return nil
+}
+
+type GetValidateToken400Response = N400Response
+
+func (response GetValidateToken400Response) VisitGetValidateTokenResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type GetValidateToken401Response = N401Response
+
+func (response GetValidateToken401Response) VisitGetValidateTokenResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetValidateToken500JSONResponse struct{ N5xxJSONResponse }
+
+func (response GetValidateToken500JSONResponse) VisitGetValidateTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetValidateToken503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type GetValidateToken503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers GetValidateToken503ResponseHeaders
+}
+
+func (response GetValidateToken503JSONResponse) VisitGetValidateTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-
-	// (GET /dialog/{user_id}/list)
-	GetDialogUserIdList(ctx context.Context, request GetDialogUserIdListRequestObject) (GetDialogUserIdListResponseObject, error)
-
-	// (POST /dialog/{user_id}/send)
-	PostDialogUserIdSend(ctx context.Context, request PostDialogUserIdSendRequestObject) (PostDialogUserIdSendResponseObject, error)
 
 	// (PUT /friend/delete/{user_id})
 	PutFriendDeleteUserId(ctx context.Context, request PutFriendDeleteUserIdRequestObject) (PutFriendDeleteUserIdResponseObject, error)
@@ -1527,6 +1405,9 @@ type StrictServerInterface interface {
 
 	// (GET /user/search)
 	GetUserSearch(ctx context.Context, request GetUserSearchRequestObject) (GetUserSearchResponseObject, error)
+
+	// (GET /validate_token)
+	GetValidateToken(ctx context.Context, request GetValidateTokenRequestObject) (GetValidateTokenResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -1539,62 +1420,6 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
-}
-
-// GetDialogUserIdList operation middleware
-func (sh *strictHandler) GetDialogUserIdList(ctx echo.Context, userId UserId) error {
-	var request GetDialogUserIdListRequestObject
-
-	request.UserId = userId
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDialogUserIdList(ctx.Request().Context(), request.(GetDialogUserIdListRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDialogUserIdList")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(GetDialogUserIdListResponseObject); ok {
-		return validResponse.VisitGetDialogUserIdListResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// PostDialogUserIdSend operation middleware
-func (sh *strictHandler) PostDialogUserIdSend(ctx echo.Context, userId UserId) error {
-	var request PostDialogUserIdSendRequestObject
-
-	request.UserId = userId
-
-	var body PostDialogUserIdSendJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDialogUserIdSend(ctx.Request().Context(), request.(PostDialogUserIdSendRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDialogUserIdSend")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(PostDialogUserIdSendResponseObject); ok {
-		return validResponse.VisitPostDialogUserIdSendResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
 }
 
 // PutFriendDeleteUserId operation middleware
@@ -1911,6 +1736,29 @@ func (sh *strictHandler) GetUserSearch(ctx echo.Context, params GetUserSearchPar
 		return err
 	} else if validResponse, ok := response.(GetUserSearchResponseObject); ok {
 		return validResponse.VisitGetUserSearchResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetValidateToken operation middleware
+func (sh *strictHandler) GetValidateToken(ctx echo.Context) error {
+	var request GetValidateTokenRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetValidateToken(ctx.Request().Context(), request.(GetValidateTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetValidateToken")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetValidateTokenResponseObject); ok {
+		return validResponse.VisitGetValidateTokenResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

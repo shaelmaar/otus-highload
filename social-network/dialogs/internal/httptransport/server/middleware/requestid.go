@@ -8,7 +8,9 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/ctxcarrier"
 )
 
-const headerXRequestID = "X-Request-Id"
+const (
+	headerXRequestID = "X-Request-Id"
+)
 
 type requestIDConfig struct {
 	Skipper middleware.Skipper

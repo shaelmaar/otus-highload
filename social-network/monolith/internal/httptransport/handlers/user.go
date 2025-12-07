@@ -1,3 +1,4 @@
+//nolint:dupl // по какой-то причине считается дубликатом.
 package handlers
 
 import (
@@ -32,4 +33,11 @@ func (h *Handlers) GetUserSearch(
 	ctx context.Context, req serverhttp.GetUserSearchRequestObject,
 ) (serverhttp.GetUserSearchResponseObject, error) {
 	return h.user.UserSearch(ctx, req)
+}
+
+// GetValidateToken валидация токена пользователя. (GET /validate_token).
+func (h *Handlers) GetValidateToken(
+	ctx context.Context, req serverhttp.GetValidateTokenRequestObject,
+) (serverhttp.GetValidateTokenResponseObject, error) {
+	return h.user.ValidateToken(ctx, req)
 }

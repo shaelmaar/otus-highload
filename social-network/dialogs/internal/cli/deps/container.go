@@ -18,22 +18,11 @@ import (
 const (
 	nameTarantoolConnection = "tarantoolConnection"
 	nameDebugServer         = "debugServer"
-	nameGRPCServer          = "grpcServer"
 	nameHTTPServer          = "httpServer"
 	nameHTTPHandlers        = "httpHandlers"
-	nameGRPCHandlers        = "grpcHandlers"
-	nameMonolithGRPCClient  = "monolithGRPCClient"
 )
 
 type shutdownFunc func(ctx context.Context) error
-
-func sdSimple(f func()) shutdownFunc {
-	return func(ctx context.Context) error {
-		f()
-
-		return nil
-	}
-}
 
 func sdWithoutCtx(f func() error) shutdownFunc {
 	return func(_ context.Context) error {
@@ -96,18 +85,10 @@ func New(ctx context.Context) (*Container, error) {
 
 	provideUseCases(i)
 
-	provideAuthService(i)
-
 	provideHTTPHandlers(i)
 
 	//nolint:contextcheck // контекст тут никак не передается.
 	provideHTTPServer(c, cfg)
-
-	provideGRPCHandlers(i)
-
-	provideGRPCServer(c)
-
-	provideGRPCClients(i, cfg)
 
 	return c, nil
 }

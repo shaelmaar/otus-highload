@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -14,11 +13,7 @@ import (
 //nolint:gochecknoglobals // слайс константой не сделать.
 var authSkipURLPrefixes = []string{}
 
-type authConfig struct {
-	tokenValidator func(context.Context, string) (string, error)
-}
-
-const authHeader = "Authorization"
+const headerXUserID = "X-User-Id"
 
 func authURLSkipper(c echo.Context) bool {
 	for _, prefix := range authSkipURLPrefixes {
@@ -30,26 +25,18 @@ func authURLSkipper(c echo.Context) bool {
 	return false
 }
 
-func authWithConfig(cfg authConfig) echo.MiddlewareFunc {
+func auth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if authURLSkipper(c) {
 				return next(c)
 			}
 
-			token, err := extractTokenFromHeader(c)
-			if err != nil {
+			userID := c.Request().Header.Get(headerXUserID)
+			if userID == "" {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 					"error":   "unauthorized",
-					"message": err.Error(),
-				})
-			}
-
-			userID, err := cfg.tokenValidator(c.Request().Context(), token)
-			if err != nil {
-				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"error":   "unauthorized",
-					"message": err.Error(),
+					"message": "x-user-id is required",
 				})
 			}
 
@@ -68,24 +55,4 @@ func authWithConfig(cfg authConfig) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
-}
-
-func extractTokenFromHeader(c echo.Context) (string, error) {
-	header := c.Request().Header.Get(authHeader)
-	if header == "" {
-		return "", echo.NewHTTPError(http.StatusUnauthorized, "Authorization header is required")
-	}
-
-	parts := strings.Split(header, " ")
-	if len(parts) != 2 {
-		return "", echo.NewHTTPError(http.StatusUnauthorized,
-			"Invalid authorization header format")
-	}
-
-	if parts[0] != "Bearer" {
-		return "", echo.NewHTTPError(http.StatusUnauthorized,
-			"Authorization header must start with 'Bearer'")
-	}
-
-	return parts[1], nil
 }

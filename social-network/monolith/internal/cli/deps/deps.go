@@ -8,7 +8,6 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	grpcServer "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server"
 	httpServer "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/server"
 	"github.com/shaelmaar/otus-highload/social-network/internal/rabbitmq"
 	userUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/user"
@@ -28,10 +27,6 @@ func (c *Container) Logger() *zap.Logger {
 
 func (c *Container) HTTPServer() *httpServer.Server {
 	return do.MustInvokeNamed[*httpServer.Server](c.i, nameHTTPServer)
-}
-
-func (c *Container) GRPCServer() *grpcServer.Server {
-	return do.MustInvokeNamed[*grpcServer.Server](c.i, nameGRPCServer)
 }
 
 func (c *Container) WSServer() *httpServer.Server {

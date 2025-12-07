@@ -113,8 +113,8 @@ func (r *Repository) GetLastPostsByUserIDs(
 		UserIds: utils.MapSlice(input.UserIDs, func(id uuid.UUID) string {
 			return id.String()
 		}),
-		Offset: int32(input.Offset), //nolint:gosec // здесь не будет значения > 1000.
-		Limit:  int32(input.Limit),  //nolint:gosec // здесь не будет значения > 1000.
+		Offset: int32(input.Offset),
+		Limit:  int32(input.Limit),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last posts by user ids from db: %w", err)

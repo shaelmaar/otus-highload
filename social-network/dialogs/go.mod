@@ -3,7 +3,6 @@ module github.com/shaelmaar/otus-highload/social-network/dialogs
 go 1.24.4
 
 require (
-	github.com/go-playground/validator/v10 v10.14.1
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/labstack/echo/v4 v4.13.4
@@ -14,22 +13,15 @@ require (
 	github.com/tarantool/go-tarantool v1.12.2
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.27.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8
-	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
 )
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
-	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
@@ -52,5 +44,6 @@ require (
 	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.2 // indirect
 )

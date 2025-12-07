@@ -17,11 +17,7 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/config"
 	"github.com/shaelmaar/otus-highload/social-network/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/internal/dto"
-	dialogsGRPCClient "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/clients/dialogs"
-	grpcHandlers "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/handlers"
-	grpcServer "github.com/shaelmaar/otus-highload/social-network/internal/grpctransport/server"
 	httpHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers"
-	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/dialog"
 	friendHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/friend"
 	loadTestHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/loadtest"
 	postHandlers "github.com/shaelmaar/otus-highload/social-network/internal/httptransport/handlers/post"
@@ -40,7 +36,6 @@ import (
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/postcreatedchunked"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeed"
 	"github.com/shaelmaar/otus-highload/social-network/internal/taskhandler/userupdatefeedchunked"
-	dialogUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/dialog"
 	feedUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/feed"
 	friendUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/friend"
 	loadTestUseCases "github.com/shaelmaar/otus-highload/social-network/internal/usecase/loadtest"
@@ -81,11 +76,6 @@ func provideUseCases(i *do.Injector) {
 		return feedUseCases.New(do.MustInvoke[*postfeed.Service](i))
 	})
 
-	do.Provide(i, func(i *do.Injector) (*dialogUseCases.UseCases, error) {
-		return dialogUseCases.New(
-			do.MustInvokeNamed[*dialogsGRPCClient.Client](i, nameDialogsGRPCClient).DialogsService)
-	})
-
 	do.Provide(i, func(i *do.Injector) (*loadTestUseCases.UseCases, error) {
 		return loadTestUseCases.New(
 			do.MustInvoke[domain.LoadTestRepository](i),
@@ -118,13 +108,6 @@ func provideHTTPHandlers(i *do.Injector) {
 		)
 	})
 
-	do.Provide(i, func(i *do.Injector) (*dialogHandlers.Handlers, error) {
-		return dialogHandlers.New(
-			do.MustInvoke[*dialogUseCases.UseCases](i),
-			do.MustInvoke[*zap.Logger](i),
-		)
-	})
-
 	do.Provide(i, func(i *do.Injector) (*loadTestHandlers.Handlers, error) {
 		return loadTestHandlers.New(
 			do.MustInvoke[*loadTestUseCases.UseCases](i),
@@ -138,7 +121,6 @@ func provideHTTPHandlers(i *do.Injector) {
 				do.MustInvoke[*userHandlers.Handlers](i),
 				do.MustInvoke[*postHandlers.Handlers](i),
 				do.MustInvoke[*friendHandlers.Handlers](i),
-				do.MustInvoke[*dialogHandlers.Handlers](i),
 				do.MustInvoke[*loadTestHandlers.Handlers](i),
 			)
 		})
@@ -216,31 +198,6 @@ func provideHTTPServer(c *Container, cfg *config.Config) {
 		}
 
 		c.addShutdown(nameHTTPServer, s.Stop)
-
-		return s, nil
-	})
-}
-
-func provideGRPCHandlers(i *do.Injector) {
-	do.ProvideNamed(i, nameGRPCHandlers, func(i *do.Injector) (*grpcHandlers.Handlers, error) {
-		return grpcHandlers.New(do.MustInvoke[*auth.Service](i))
-	})
-}
-
-func provideGRPCServer(c *Container) {
-	do.ProvideNamed(c.i, nameGRPCServer, func(i *do.Injector) (*grpcServer.Server, error) {
-		s, err := grpcServer.New(&grpcServer.NewServerOptions{
-			Logger:            do.MustInvoke[*zap.Logger](i),
-			GRPCHandlers:      do.MustInvokeNamed[*grpcHandlers.Handlers](i, nameGRPCHandlers),
-			Validator:         nil,
-			UnaryInterceptors: nil,
-			ServerOptions:     nil,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to init grpc server: %w", err)
-		}
-
-		c.addShutdown(nameGRPCServer, sdSimple(s.Stop))
 
 		return s, nil
 	})
@@ -436,24 +393,6 @@ func provideTaskConsumers(c *Container, cfg *config.Config) {
 			return consumer, nil
 		},
 	)
-}
-
-func provideGRPCClients(i *do.Injector, cfg *config.Config) {
-	do.ProvideNamed[*dialogsGRPCClient.Client](
-		i, nameDialogsGRPCClient, func(i *do.Injector) (*dialogsGRPCClient.Client, error) {
-			c, err := dialogsGRPCClient.NewGRPCClient(&dialogsGRPCClient.NewClientOptions{
-				GRPCAddr:          cfg.DialogsGRPCClient.Host,
-				TLS:               cfg.DialogsGRPCClient.TLS,
-				Timeout:           &cfg.DialogsGRPCClient.Timeout,
-				UnaryInterceptors: nil,
-				DialOptions:       nil,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to init dialogs grpc client: %w", err)
-			}
-
-			return c, nil
-		})
 }
 
 func provideConfig() (*config.Config, error) {

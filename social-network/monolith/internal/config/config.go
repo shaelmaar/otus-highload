@@ -11,7 +11,6 @@ type Config struct {
 	ServiceName           string `envconfig:"SERVICE_NAME" default:"social-network"`
 	ServerListenPort      int    `envconfig:"SERVER_LISTEN_PORT" required:"true"`
 	WSServerListenPort    int    `envconfig:"WS_SERVER_LISTEN_PORT" required:"true"`
-	GRPCServerListenPort  int    `envconfig:"GRPC_SERVER_LISTEN_PORT" required:"true"`
 	DebugServerListenPort int    `envconfig:"DEBUG_SERVER_LISTEN_PORT" required:"true"`
 	Debug                 bool   `envconfig:"DEBUG" default:"false"`
 
@@ -25,8 +24,6 @@ type Config struct {
 	RabbitMQ RabbitMQ `envconfig:"RABBITMQ"`
 
 	Auth Auth `envconfig:"AUTH"`
-
-	DialogsGRPCClient DialogsGRPCClient `envconfig:"DIALOGS_GRPC_CLIENT"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }

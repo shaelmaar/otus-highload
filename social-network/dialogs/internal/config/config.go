@@ -10,15 +10,12 @@ import (
 type Config struct {
 	ServiceName           string `envconfig:"SERVICE_NAME" default:"social-network-dialogs"`
 	ServerListenPort      int    `envconfig:"SERVER_LISTEN_PORT" required:"true"`
-	GRPCServerListenPort  int    `envconfig:"GRPC_SERVER_LISTEN_PORT" required:"true"`
 	DebugServerListenPort int    `envconfig:"DEBUG_SERVER_LISTEN_PORT" required:"true"`
 	Debug                 bool   `envconfig:"DEBUG" default:"false"`
 
 	Log Log
 
 	TarantoolDB TarantoolDB `envconfig:"TARANTOOL_DB"`
-
-	MonolithGRPCClient MonolithGRPCClient `envconfig:"MONOLITH_GRPC_CLIENT"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }

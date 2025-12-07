@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/config"
-	grpcServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/grpctransport/server"
 	httpServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/server"
 )
 
@@ -20,10 +19,6 @@ func (c *Container) Logger() *zap.Logger {
 
 func (c *Container) HTTPServer() *httpServer.Server {
 	return do.MustInvokeNamed[*httpServer.Server](c.i, nameHTTPServer)
-}
-
-func (c *Container) GRPCServer() *grpcServer.Server {
-	return do.MustInvokeNamed[*grpcServer.Server](c.i, nameGRPCServer)
 }
 
 func (c *Container) DebugServer() *echo.Echo {

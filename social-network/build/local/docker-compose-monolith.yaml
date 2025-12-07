@@ -3,16 +3,14 @@ networks:
     external: true
 
 volumes:
-  monolith-db-master-vol:
-  monolith-db-slave1-vol:
-  monolith-db-slave2-vol:
+  monolith-db-vol:
   monolith-valkey-vol:
   monolith-rabbitmq-vol:
 
 services:
-  monolith_db_master:
+  monolith_db:
     image: postgres:17-alpine
-    hostname: monolith_db_master
+    hostname: monolith_db
     environment:
       POSTGRES_USER: ${MONOLITH_DB_USER}
       POSTGRES_PASSWORD: ${MONOLITH_DB_PASSWORD}
@@ -21,7 +19,7 @@ services:
     expose:
       - "5432"
     volumes:
-      - monolith-db-master-vol:/var/lib/postgresql/data
+      - monolith-db-vol:/var/lib/postgresql/data
       - ./pg_master:/docker-entrypoint-initdb.d
     networks:
       - social-network-shared-net
@@ -30,35 +28,6 @@ services:
       interval: 5s
       timeout: 30s
       retries: 5
-
-  monolith_db_slave1: &monolith_db_slave
-    build:
-      context: ./pg_slave
-    hostname: monolith_db_slave1
-    environment:
-      POSTGRES_USER: ${MONOLITH_DB_USER}
-      POSTGRES_PASSWORD: ${MONOLITH_DB_PASSWORD}
-      POSTGRES_DB: ${MONOLITH_DB_NAME}
-    depends_on:
-      monolith_db_master:
-        condition: service_healthy
-    volumes:
-      - monolith-db-slave1-vol:/var/lib/postgresql/data
-    networks:
-      - social-network-shared-net
-    expose:
-      - "5432"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${MONOLITH_DB_USER}" ]
-      interval: 5s
-      timeout: 30s
-      retries: 5
-
-  monolith_db_slave2:
-    <<: *monolith_db_slave
-    hostname: monolith_db_slave2
-    volumes:
-      - monolith-db-slave2-vol:/var/lib/postgresql/data
 
   monolith_valkey:
     image: valkey/valkey:7.2-alpine
@@ -103,11 +72,7 @@ services:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      monolith_db_master:
-        condition: service_healthy
-      monolith_db_slave1:
-        condition: service_healthy
-      monolith_db_slave2:
+      monolith_db:
         condition: service_healthy
       monolith_rabbitmq:
         condition: service_healthy
@@ -120,11 +85,11 @@ services:
     networks:
       - social-network-shared-net
 
-  monolith_app_1: &monolith_app
+  monolith_app:
     build:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
-    hostname: monolith_app_1
+    hostname: monolith_app
     depends_on:
       - monolith_migrate
     env_file:
@@ -135,22 +100,12 @@ services:
     networks:
       - social-network-shared-net
 
-  monolith_app_2:
-    <<: *monolith_app
-    hostname: monolith_app_2
-
-  monolith_app_3:
-    <<: *monolith_app
-    hostname: monolith_app_3
-
   monolith_task_processor:
     build:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      - monolith_app_1
-      - monolith_app_2
-      - monolith_app_3
+      - monolith_app
     env_file:
       - .env.monolith
     command: [ "task_process" ]
@@ -163,9 +118,7 @@ services:
       context: ../../monolith
       dockerfile: ../build/Dockerfile-monolith
     depends_on:
-      - monolith_app_1
-      - monolith_app_2
-      - monolith_app_3
+      - monolith_app
     env_file:
       - .env.monolith
     expose:
