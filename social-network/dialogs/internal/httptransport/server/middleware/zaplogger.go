@@ -21,7 +21,7 @@ type zapLoggerConfig struct {
 //nolint:gochecknoglobals
 var headerLogFields = []string{
 	"x-device-id", "x-device-platform", "x-app-version", "x-username", "x-keycloak-id", "x-device-tag", "x-request-id",
-	"user-agent", "x-user-agent", "x-client-name",
+	"user-agent", "x-user-agent", "x-client-name", "x-user-id",
 }
 
 func zapLoggerMiddleware(config zapLoggerConfig, l *zap.Logger) echo.MiddlewareFunc {

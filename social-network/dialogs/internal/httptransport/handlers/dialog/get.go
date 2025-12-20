@@ -17,9 +17,9 @@ func (h *Handlers) Get(
 	ctx context.Context,
 	req serverhttp.GetDialogUserIdListRequestObject,
 ) (serverhttp.GetDialogUserIdListResponseObject, error) {
-	fromUserID, _ := ctxcarrier.ExtractUserID(ctx)
+	toUserID, _ := ctxcarrier.ExtractUserID(ctx)
 
-	toUserID, err := uuid.Parse(req.UserId)
+	fromUserID, err := uuid.Parse(req.UserId)
 	if err != nil {
 		//nolint:nilerr // возвращается 400 ответ.
 		return serverhttp.GetDialogUserIdList400Response{}, nil
@@ -38,11 +38,28 @@ func (h *Handlers) Get(
 
 	dialogMessages := utils.MapSlice(messages, func(m domain.DialogMessage) serverhttp.DialogMessage {
 		return serverhttp.DialogMessage{
-			From: m.From.String(),
-			Text: m.Text,
-			To:   m.To.String(),
+			Id:    m.ID,
+			From:  m.From.String(),
+			Text:  m.Text,
+			To:    m.To.String(),
+			State: mapDialogMessageState(m.State),
 		}
 	})
 
 	return serverhttp.GetDialogUserIdList200JSONResponse(dialogMessages), nil
+}
+
+func mapDialogMessageState(s domain.DialogMessageState) *serverhttp.DialogMessageState {
+	switch s {
+	case domain.DialogMessageStateSending:
+		return utils.Ptr(serverhttp.Sending)
+	case domain.DialogMessageStateFailed:
+		return utils.Ptr(serverhttp.Failed)
+	case domain.DialogMessageStateSent, domain.DialogMessageStateReading:
+		return utils.Ptr(serverhttp.Sent)
+	case domain.DialogMessageStateRead:
+		return utils.Ptr(serverhttp.Read)
+	}
+
+	return nil
 }

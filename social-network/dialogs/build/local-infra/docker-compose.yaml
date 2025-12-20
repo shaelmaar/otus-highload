@@ -12,7 +12,107 @@ services:
     environment:
       TARANTOOL_USER_NAME: ${TARANTOOL_USER}
       TARANTOOL_USER_PASSWORD: ${TARANTOOL_PASS}
+    networks:
+      - local-infra-net
     volumes:
       - tarantool-vol:/var/lib/tarantool
       - ../tarantool/init.lua:/opt/tarantool/init.lua
     command: tarantool /opt/tarantool/init.lua
+
+  kafka-1:
+    image: apache/kafka:latest
+    container_name: kafka-1
+    networks:
+      - local-infra-net
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CLUSTER_ID: "abcdefghijklmnopqrstuv"
+
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+
+  kafka-2:
+    image: apache/kafka:latest
+    container_name: kafka-2
+    networks:
+      - local-infra-net
+    ports:
+      - "29093:29093"
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CLUSTER_ID: "abcdefghijklmnopqrstuv"
+
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29093,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:9092,EXTERNAL://localhost:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+
+  kafka-3:
+    image: apache/kafka:latest
+    container_name: kafka-3
+    networks:
+      - local-infra-net
+    ports:
+      - "29094:29094"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CLUSTER_ID: "abcdefghijklmnopqrstuv"
+
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:9092,EXTERNAL://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: kafka-init
+    networks:
+      - local-infra-net
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    entrypoint: [ ]
+    command:
+      - /bin/bash
+      - -c
+      - |
+        echo "Waiting for Kafka..."
+        until /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server kafka-1:9092 \
+        --list >/dev/null 2>&1
+        do
+        echo "  Kafka is not ready yet..."
+        sleep 3
+        done
+    
+        echo "Kafka is ready. Creating topics..."
+    
+        /opt/kafka/bin/kafka-topics.sh \
+        --create \
+        --topic dialogs.messages.event.v1 \
+        --partitions 12 \
+        --replication-factor 3 \
+        --bootstrap-server kafka-1:9092 \
+        || echo "Topic dialogs.messages.event.v1 already exists"
+    
+        echo "All topics created."
+      
+    
+

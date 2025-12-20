@@ -7,6 +7,7 @@ import (
 
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/config"
 	httpServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/server"
+	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/kafka/consumer/countersmessages"
 )
 
 func (c *Container) Config() *config.Config {
@@ -23,4 +24,8 @@ func (c *Container) HTTPServer() *httpServer.Server {
 
 func (c *Container) DebugServer() *echo.Echo {
 	return do.MustInvokeNamed[*echo.Echo](c.i, nameDebugServer)
+}
+
+func (c *Container) CountersMessagesConsumer() *countersmessages.Consumer {
+	return do.MustInvokeNamed[*countersmessages.Consumer](c.i, nameCountersMessagesConsumer)
 }

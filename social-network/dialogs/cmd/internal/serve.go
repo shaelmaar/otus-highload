@@ -16,7 +16,7 @@ import (
 func NewServeCommand(container *deps.Container) *cobra.Command {
 	return &cobra.Command{ //nolint:exhaustruct
 		Use:   "serve",
-		Short: "run social-network server",
+		Short: "run social-network dialogs server",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},

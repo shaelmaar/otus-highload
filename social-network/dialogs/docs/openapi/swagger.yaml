@@ -61,6 +61,32 @@ paths:
         '503':
           $ref: '#/components/responses/5xx'
 
+  /dialog/{user_id}/read_messages/{message_id}:
+    patch:
+      parameters:
+        - $ref: '#/components/parameters/UserIDHeader'
+        - name: user_id
+          schema:
+            $ref: '#/components/schemas/UserId'
+          required: true
+          in: path
+        - name: message_id
+          schema:
+            $ref: '#/components/schemas/DialogMessageID'
+          required: true
+          in: path
+      responses:
+        '204':
+          description: Успешно прочитаны сообщения
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '500':
+          $ref: '#/components/responses/5xx'
+        '503':
+          $ref: '#/components/responses/5xx'
+
 components:
   parameters:
     UserIDHeader:
@@ -113,18 +139,46 @@ components:
       description: Текст сообщения
       example: Привет, как дела?
 
+    DialogMessageID:
+      type: integer
+      format: uint64
+      description: Идентификатор сообщения
+      example: 1
+
+    DialogMessageState:
+      type: string
+      description: | 
+        Состояние сообщения:
+        
+        sending - создано, отправляется
+        failed - не удалось отправить
+        sent - отправлено
+        read - прочитано
+      enum:
+        - sending
+        - failed
+        - sent
+        - read
+
+      example: created
+
     DialogMessage:
       type: object
       required:
+        - id
         - from
         - to
         - text
       properties:
+        id:
+          $ref: '#/components/schemas/DialogMessageID'
         from:
           $ref: '#/components/schemas/UserId'
         to:
           $ref: '#/components/schemas/UserId'
         text:
           $ref: '#/components/schemas/DialogMessageText'
+        state:
+          $ref: '#/components/schemas/DialogMessageState'
 
 

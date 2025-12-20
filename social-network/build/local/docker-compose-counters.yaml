@@ -1,0 +1,162 @@
+networks:
+  social-network-shared-net:
+    external: true
+
+volumes:
+  counters_valkey_master_vol:
+  counters_valkey_replica1_vol:
+  counters_valkey_replica2_vol:
+  counters_valkey_sentinel1_vol:
+  counters_valkey_sentinel2_vol:
+  counters_valkey_sentinel3_vol:
+
+services:
+  counters_valkey_master:
+    image: valkey/valkey:7.2-alpine
+    hostname: counters_valkey_master
+    command: >
+      valkey-server
+        --requirepass ${COUNTERS_VALKEY_PASSWORD}
+        --masterauth ${COUNTERS_VALKEY_PASSWORD}
+        --appendonly yes
+        --protected-mode no
+        --save 3600 1 300 100 60 10000
+        --loglevel notice
+        --maxmemory-policy noeviction
+        --maxmemory 1gb
+    volumes:
+      - counters_valkey_master_vol:/data
+    networks:
+      social-network-shared-net:
+        ipv4_address: 172.21.0.31
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${COUNTERS_VALKEY_PASSWORD}", "ping" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+
+  counters_valkey_replica1: &counters_valkey_replica
+    image: valkey/valkey:7.2-alpine
+    command: >
+      valkey-server
+        --replicaof counters_valkey_master 6379
+        --requirepass ${COUNTERS_VALKEY_PASSWORD}
+        --masterauth ${COUNTERS_VALKEY_PASSWORD}
+        --appendonly yes
+        --protected-mode no
+        --save 3600 1 300 100 60 10000
+        --loglevel notice
+        --maxmemory-policy noeviction
+        --maxmemory 1gb
+    depends_on:
+      counters_valkey_master:
+        condition: service_healthy
+    networks:
+      - social-network-shared-net
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${COUNTERS_VALKEY_PASSWORD}", "ping" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+    volumes:
+      - counters_valkey_replica1_vol:/data
+
+  counters_valkey_replica2:
+    <<: *counters_valkey_replica
+    volumes:
+      - counters_valkey_replica2_vol:/data
+
+  counters_valkey_sentinel1: &counters_valkey_sentinel
+    image: valkey/valkey:7.2-alpine
+    depends_on:
+      counters_valkey_master:
+        condition: service_healthy
+    networks:
+      - social-network-shared-net
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.21.0.31 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${COUNTERS_VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    volumes:
+      - counters_valkey_sentinel1_vol:/data
+
+  counters_valkey_sentinel2:
+    <<: *counters_valkey_sentinel
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.21.0.31 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${COUNTERS_VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    volumes:
+      - counters_valkey_sentinel2_vol:/data
+
+  counters_valkey_sentinel3:
+    <<: *counters_valkey_sentinel
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.21.0.31 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${COUNTERS_VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    volumes:
+      - counters_valkey_sentinel3_vol:/data
+
+  counters_app:
+    build:
+      context: ../../counters
+      dockerfile: ../build/Dockerfile-counters
+    hostname: counters_app
+    depends_on:
+      counters_valkey_master:
+        condition: service_healthy
+      counters_valkey_replica1:
+        condition: service_started
+      counters_valkey_replica2:
+        condition: service_started
+      counters_valkey_sentinel1:
+        condition: service_started
+      counters_valkey_sentinel2:
+        condition: service_started
+      counters_valkey_sentinel3:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env.counters
+    expose:
+      - "8080"
+    restart: unless-stopped
+    networks:
+      - social-network-shared-net
+
+  counters_consumer:
+    build:
+      context: ../../counters
+      dockerfile: ../build/Dockerfile-counters
+    depends_on:
+      counters_app:
+        condition: service_started
+    env_file:
+      - .env.counters
+    command: [ "consume" ]
+    restart: unless-stopped
+    networks:
+      - social-network-shared-net
+    deploy:
+      replicas: 3
+

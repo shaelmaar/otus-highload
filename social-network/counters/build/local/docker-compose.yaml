@@ -1,0 +1,146 @@
+volumes:
+  valkey-master-vol:
+  valkey-replica1-vol:
+  valkey-replica2-vol:
+  sentinel1-vol:
+  sentinel2-vol:
+  sentinel3-vol:
+
+networks:
+  local-infra-net:
+    ipam:
+      driver: default
+      config:
+        - subnet: ${DOCKER_SUBNET}
+
+services:
+  valkey-master:
+    image: valkey/valkey:7.2-alpine
+    hostname: valkey-master
+    command: >
+      valkey-server
+        --requirepass ${VALKEY_PASSWORD}
+        --masterauth ${VALKEY_PASSWORD}
+        --appendonly yes
+        --protected-mode no
+        --save 3600 1 300 100 60 10000
+        --loglevel notice
+        --maxmemory-policy noeviction
+        --maxmemory 1gb
+    volumes:
+      - valkey-master-vol:/data
+    networks:
+      local-infra-net:
+        ipv4_address: 172.22.0.2
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+
+  valkey-replica1: &valkey-replica
+    image: valkey/valkey:7.2-alpine
+    command: >
+      valkey-server
+        --replicaof valkey-master 6379
+        --requirepass ${VALKEY_PASSWORD}
+        --masterauth ${VALKEY_PASSWORD}
+        --appendonly yes
+        --protected-mode no
+        --save 3600 1 300 100 60 10000
+        --loglevel notice
+        --maxmemory-policy noeviction
+        --maxmemory 1gb
+    depends_on:
+      valkey-master:
+        condition: service_healthy
+    networks:
+      - local-infra-net
+    healthcheck:
+      test: [ "CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping" ]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+    volumes:
+      - valkey-replica1-vol:/data
+
+  valkey-replica2:
+    <<: *valkey-replica
+    volumes:
+      - valkey-replica2-vol:/data
+
+  sentinel1: &sentinel
+    image: valkey/valkey:7.2-alpine
+    depends_on:
+      valkey-master:
+        condition: service_healthy
+    networks:
+      - local-infra-net
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.22.0.2 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    ports:
+      - "26379:26379"
+    volumes:
+      - sentinel1-vol:/data
+
+  sentinel2:
+    <<: *sentinel
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.22.0.2 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    ports:
+      - "26380:26379"
+    volumes:
+      - sentinel2-vol:/data
+
+  sentinel3:
+    <<: *sentinel
+    command: >
+      sh -c '
+      echo "port 26379" > /etc/sentinel.conf &&
+      echo "sentinel monitor mymaster 172.22.0.2 6379 2" >> /etc/sentinel.conf &&
+      echo "sentinel auth-pass mymaster ${VALKEY_PASSWORD}" >> /etc/sentinel.conf &&
+      echo "sentinel down-after-milliseconds mymaster 3000" >> /etc/sentinel.conf &&
+      echo "sentinel failover-timeout mymaster 6000" >> /etc/sentinel.conf &&
+      echo "sentinel parallel-syncs mymaster 1" >> /etc/sentinel.conf &&
+      valkey-sentinel /etc/sentinel.conf
+      '
+    ports:
+      - "26381:26379"
+    volumes:
+      - sentinel3-vol:/data
+
+  app:
+    build:
+      context: ../..
+      dockerfile: build/Dockerfile
+    depends_on:
+      - valkey-master
+      - valkey-replica1
+      - valkey-replica2
+      - sentinel1
+      - sentinel2
+      - sentinel3
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    restart: unless-stopped
+    networks:
+      - local-infra-net

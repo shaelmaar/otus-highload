@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package counters.messages.event.v1;
+
+option go_package = "gen/kafka/producer/proto";
+
+import "google/protobuf/timestamp.proto";
+
+message CountersMessagesEventV1 {
+  // event_id id события, являющийся ключом идемпотентности,
+  // по которому можно отсеивать дубли.
+  string event_id = 1;
+  // timestamp дата и время возникновения события.
+  google.protobuf.Timestamp timestamp = 2;
+  string dialog_id = 3;
+
+  message UnreadIncremented {
+    uint64 message_id = 1;
+  }
+
+  message UnreadIncrementFailed {
+    uint64 message_id = 1;
+  }
+
+  message UnreadDecremented {
+    repeated uint64 message_ids = 1;
+  }
+
+  message UnreadDecrementFailed {
+    repeated uint64 message_ids = 1;
+  }
+
+  oneof event {
+    UnreadIncremented unread_incremented = 4;
+    UnreadIncrementFailed unread_increment_failed = 5;
+    UnreadDecremented unread_decremented = 6;
+    UnreadDecrementFailed unread_decrement_failed = 7;
+  }
+}

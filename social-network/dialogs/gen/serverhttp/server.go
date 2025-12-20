@@ -14,10 +14,29 @@ import (
 	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
+// Defines values for DialogMessageState.
+const (
+	Failed  DialogMessageState = "failed"
+	Read    DialogMessageState = "read"
+	Sending DialogMessageState = "sending"
+	Sent    DialogMessageState = "sent"
+)
+
 // DialogMessage defines model for DialogMessage.
 type DialogMessage struct {
 	// From Идентификатор пользователя
 	From UserId `json:"from"`
+
+	// Id Идентификатор сообщения
+	Id DialogMessageID `json:"id"`
+
+	// State Состояние сообщения:
+	//
+	// sending - создано, отправляется
+	// failed - не удалось отправить
+	// sent - отправлено
+	// read - прочитано
+	State *DialogMessageState `json:"state,omitempty"`
 
 	// Text Текст сообщения
 	Text DialogMessageText `json:"text"`
@@ -25,6 +44,17 @@ type DialogMessage struct {
 	// To Идентификатор пользователя
 	To UserId `json:"to"`
 }
+
+// DialogMessageID Идентификатор сообщения
+type DialogMessageID = uint64
+
+// DialogMessageState Состояние сообщения:
+//
+// sending - создано, отправляется
+// failed - не удалось отправить
+// sent - отправлено
+// read - прочитано
+type DialogMessageState string
 
 // DialogMessageText Текст сообщения
 type DialogMessageText = string
@@ -53,6 +83,12 @@ type GetDialogUserIdListParams struct {
 	XUserId UserIDHeader `json:"X-User-Id"`
 }
 
+// PatchDialogUserIdReadMessagesMessageIdParams defines parameters for PatchDialogUserIdReadMessagesMessageId.
+type PatchDialogUserIdReadMessagesMessageIdParams struct {
+	// XUserId Идентификатор пользователя
+	XUserId UserIDHeader `json:"X-User-Id"`
+}
+
 // PostDialogUserIdSendJSONBody defines parameters for PostDialogUserIdSend.
 type PostDialogUserIdSendJSONBody struct {
 	// Text Текст сообщения
@@ -73,6 +109,9 @@ type ServerInterface interface {
 
 	// (GET /dialog/{user_id}/list)
 	GetDialogUserIdList(ctx echo.Context, userId UserId, params GetDialogUserIdListParams) error
+
+	// (PATCH /dialog/{user_id}/read_messages/{message_id})
+	PatchDialogUserIdReadMessagesMessageId(ctx echo.Context, userId UserId, messageId DialogMessageID, params PatchDialogUserIdReadMessagesMessageIdParams) error
 
 	// (POST /dialog/{user_id}/send)
 	PostDialogUserIdSend(ctx echo.Context, userId UserId, params PostDialogUserIdSendParams) error
@@ -118,6 +157,52 @@ func (w *ServerInterfaceWrapper) GetDialogUserIdList(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetDialogUserIdList(ctx, userId, params)
+	return err
+}
+
+// PatchDialogUserIdReadMessagesMessageId converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchDialogUserIdReadMessagesMessageId(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId UserId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "user_id", runtime.ParamLocationPath, ctx.Param("user_id"), &userId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// ------------- Path parameter "message_id" -------------
+	var messageId DialogMessageID
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "message_id", runtime.ParamLocationPath, ctx.Param("message_id"), &messageId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter message_id: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PatchDialogUserIdReadMessagesMessageIdParams
+
+	headers := ctx.Request().Header
+	// ------------- Required header parameter "X-User-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-User-Id")]; found {
+		var XUserId UserIDHeader
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-User-Id, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithLocation("simple", false, "X-User-Id", runtime.ParamLocationHeader, valueList[0], &XUserId)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-User-Id: %s", err))
+		}
+
+		params.XUserId = XUserId
+	} else {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-User-Id is required, but not found"))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchDialogUserIdReadMessagesMessageId(ctx, userId, messageId, params)
 	return err
 }
 
@@ -188,6 +273,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/dialog/:user_id/list", wrapper.GetDialogUserIdList)
+	router.PATCH(baseURL+"/dialog/:user_id/read_messages/:message_id", wrapper.PatchDialogUserIdReadMessagesMessageId)
 	router.POST(baseURL+"/dialog/:user_id/send", wrapper.PostDialogUserIdSend)
 
 }
@@ -284,6 +370,74 @@ func (response GetDialogUserIdList503JSONResponse) VisitGetDialogUserIdListRespo
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type PatchDialogUserIdReadMessagesMessageIdRequestObject struct {
+	UserId    UserId          `json:"user_id"`
+	MessageId DialogMessageID `json:"message_id"`
+	Params    PatchDialogUserIdReadMessagesMessageIdParams
+}
+
+type PatchDialogUserIdReadMessagesMessageIdResponseObject interface {
+	VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error
+}
+
+type PatchDialogUserIdReadMessagesMessageId204Response struct {
+}
+
+func (response PatchDialogUserIdReadMessagesMessageId204Response) VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type PatchDialogUserIdReadMessagesMessageId400Response = N400Response
+
+func (response PatchDialogUserIdReadMessagesMessageId400Response) VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type PatchDialogUserIdReadMessagesMessageId401Response = N401Response
+
+func (response PatchDialogUserIdReadMessagesMessageId401Response) VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type PatchDialogUserIdReadMessagesMessageId500JSONResponse struct{ N5xxJSONResponse }
+
+func (response PatchDialogUserIdReadMessagesMessageId500JSONResponse) VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type PatchDialogUserIdReadMessagesMessageId503ResponseHeaders struct {
+	RetryAfter int
+}
+
+type PatchDialogUserIdReadMessagesMessageId503JSONResponse struct {
+	Body struct {
+		// Code Код ошибки. Предназначен для классификации проблем и более быстрого решения проблем.
+		Code *int `json:"code,omitempty"`
+
+		// Message Описание ошибки
+		Message string `json:"message"`
+
+		// RequestId Идентификатор запроса. Предназначен для более быстрого поиска проблем.
+		RequestId *string `json:"request_id,omitempty"`
+	}
+	Headers PatchDialogUserIdReadMessagesMessageId503ResponseHeaders
+}
+
+func (response PatchDialogUserIdReadMessagesMessageId503JSONResponse) VisitPatchDialogUserIdReadMessagesMessageIdResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 type PostDialogUserIdSendRequestObject struct {
 	UserId UserId `json:"user_id"`
 	Params PostDialogUserIdSendParams
@@ -358,6 +512,9 @@ type StrictServerInterface interface {
 	// (GET /dialog/{user_id}/list)
 	GetDialogUserIdList(ctx context.Context, request GetDialogUserIdListRequestObject) (GetDialogUserIdListResponseObject, error)
 
+	// (PATCH /dialog/{user_id}/read_messages/{message_id})
+	PatchDialogUserIdReadMessagesMessageId(ctx context.Context, request PatchDialogUserIdReadMessagesMessageIdRequestObject) (PatchDialogUserIdReadMessagesMessageIdResponseObject, error)
+
 	// (POST /dialog/{user_id}/send)
 	PostDialogUserIdSend(ctx context.Context, request PostDialogUserIdSendRequestObject) (PostDialogUserIdSendResponseObject, error)
 }
@@ -394,6 +551,33 @@ func (sh *strictHandler) GetDialogUserIdList(ctx echo.Context, userId UserId, pa
 		return err
 	} else if validResponse, ok := response.(GetDialogUserIdListResponseObject); ok {
 		return validResponse.VisitGetDialogUserIdListResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PatchDialogUserIdReadMessagesMessageId operation middleware
+func (sh *strictHandler) PatchDialogUserIdReadMessagesMessageId(ctx echo.Context, userId UserId, messageId DialogMessageID, params PatchDialogUserIdReadMessagesMessageIdParams) error {
+	var request PatchDialogUserIdReadMessagesMessageIdRequestObject
+
+	request.UserId = userId
+	request.MessageId = messageId
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PatchDialogUserIdReadMessagesMessageId(ctx.Request().Context(), request.(PatchDialogUserIdReadMessagesMessageIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PatchDialogUserIdReadMessagesMessageId")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PatchDialogUserIdReadMessagesMessageIdResponseObject); ok {
+		return validResponse.VisitPatchDialogUserIdReadMessagesMessageIdResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

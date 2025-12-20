@@ -24,7 +24,10 @@ services:
       dockerfile: ../build/Dockerfile-dialogs
     hostname: dialogs_app
     depends_on:
-      - dialogs_tarantool
+      dialogs_tarantool:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
     env_file:
       - .env.dialogs
     expose:
@@ -32,3 +35,19 @@ services:
     restart: unless-stopped
     networks:
       - social-network-shared-net
+
+  dialogs_consumer:
+    build:
+      context: ../../dialogs
+      dockerfile: ../build/Dockerfile-dialogs
+    depends_on:
+      dialogs_app:
+        condition: service_started
+    env_file:
+      - .env.dialogs
+    command: [ "consume" ]
+    restart: unless-stopped
+    networks:
+      - social-network-shared-net
+    deploy:
+      replicas: 3
