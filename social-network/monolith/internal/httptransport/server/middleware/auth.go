@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -27,8 +26,6 @@ type authConfig struct {
 const authHeader = "Authorization"
 
 func authURLSkipper(c echo.Context) bool {
-	fmt.Println(c.Path())
-
 	for _, prefix := range authSkipURLPrefixes {
 		if strings.HasPrefix(c.Path(), prefix) {
 			return true

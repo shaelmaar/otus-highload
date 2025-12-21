@@ -15,6 +15,7 @@ type UseCases interface {
 	CreateMessage(ctx context.Context, input dto.DialogCreateMessage) error
 	GetMessagesList(
 		ctx context.Context, input dto.DialogMessagesListGet) ([]domain.DialogMessage, error)
+	ReadMessages(ctx context.Context, input dto.ReadMessages) error
 }
 
 type Handlers struct {

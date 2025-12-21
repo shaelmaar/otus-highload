@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/samber/do"
+	"github.com/segmentio/kafka-go"
 	"github.com/tarantool/go-tarantool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -17,13 +18,18 @@ import (
 	httpHanders "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/handlers"
 	dialogHandlers "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/handlers/dialog"
 	httpServer "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/httptransport/server"
+	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/kafka/consumer/countersmessages"
+	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/kafka/producer/messages"
 	dialogRepo "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/repository/dialog"
 	dialogUseCases "github.com/shaelmaar/otus-highload/social-network/dialogs/internal/usecase/dialog"
 )
 
 func provideUseCases(i *do.Injector) {
 	do.Provide(i, func(i *do.Injector) (*dialogUseCases.UseCases, error) {
-		return dialogUseCases.New(do.MustInvoke[domain.DialogRepository](i))
+		return dialogUseCases.New(
+			do.MustInvoke[domain.DialogRepository](i),
+			do.MustInvoke[*messages.Producer](i),
+		)
 	})
 }
 
@@ -134,4 +140,49 @@ func provideTarantoolConnection(cfg *config.Config) (*tarantool.Connection, erro
 	}
 
 	return conn, nil
+}
+
+func provideKafkaProducers(c *Container, cfg *config.Config) {
+	do.Provide(c.i, func(i *do.Injector) (*messages.Producer, error) {
+		kafkaWriter := &kafka.Writer{
+			Addr:         kafka.TCP(cfg.Kafka.Brokers...),
+			BatchSize:    1,
+			Balancer:     &kafka.Hash{},
+			RequiredAcks: kafka.RequireOne,
+			Topic:        messages.TopicName,
+		}
+
+		producer, err := messages.New(kafkaWriter)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(nameDialogsMessagesProducer, sdWithoutCtx(producer.Close))
+
+		return producer, nil
+	})
+}
+
+func provideKafkaConsumers(c *Container, cfg *config.Config) {
+	do.ProvideNamed(c.i, nameCountersMessagesConsumer, func(i *do.Injector) (*countersmessages.Consumer, error) {
+		reader := kafka.NewReader(kafka.ReaderConfig{
+			Brokers:     cfg.Kafka.Brokers,
+			GroupID:     cfg.Kafka.GroupName,
+			Topic:       countersmessages.TopicName,
+			StartOffset: kafka.FirstOffset,
+		})
+
+		consumer, err := countersmessages.New(
+			reader,
+			do.MustInvoke[*dialogUseCases.UseCases](i),
+			do.MustInvoke[*zap.Logger](i),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		c.addShutdown(nameCountersMessagesConsumer, sdWithoutCtx(consumer.Close))
+
+		return consumer, nil
+	})
 }

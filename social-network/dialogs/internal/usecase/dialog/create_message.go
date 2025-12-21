@@ -14,15 +14,28 @@ import (
 )
 
 func (u *UseCases) CreateMessage(ctx context.Context, input dto.DialogCreateMessage) error {
-	err := u.repo.CreateDialogMessage(ctx, domain.DialogMessage{
+	dialogID := generateDialogID(input.From, input.To)
+
+	id, err := u.repo.CreateDialogMessage(ctx, domain.DialogMessage{
 		From:      input.From,
 		To:        input.To,
-		DialogID:  generateDialogID(input.From, input.To),
+		DialogID:  dialogID,
 		Text:      input.Text,
+		State:     domain.DialogMessageStateSending,
 		CreatedAt: input.Time,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create dialog message: %w", err)
+	}
+
+	err = u.kafkaProducer.MessageCreated(ctx, dto.MessageCreatedEvent{
+		MessageID: id,
+		DialogID:  dialogID,
+		From:      input.From,
+		To:        input.To,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to produce message created event: %w", err)
 	}
 
 	return nil

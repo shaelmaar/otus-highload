@@ -16,6 +16,7 @@ type Config struct {
 	Log Log
 
 	TarantoolDB TarantoolDB `envconfig:"TARANTOOL_DB"`
+	Kafka       Kafka       `envconfig:"KAFKA"`
 
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
 }

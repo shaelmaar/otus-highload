@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	nameTarantoolConnection = "tarantoolConnection"
-	nameDebugServer         = "debugServer"
-	nameHTTPServer          = "httpServer"
-	nameHTTPHandlers        = "httpHandlers"
+	nameTarantoolConnection      = "tarantoolConnection"
+	nameDebugServer              = "debugServer"
+	nameHTTPServer               = "httpServer"
+	nameHTTPHandlers             = "httpHandlers"
+	nameDialogsMessagesProducer  = "dialogsMessagesProducer"
+	nameCountersMessagesConsumer = "countersMessagesConsumer"
 )
 
 type shutdownFunc func(ctx context.Context) error
@@ -82,6 +84,10 @@ func New(ctx context.Context) (*Container, error) {
 	})
 
 	provideRepositories(i)
+
+	provideKafkaProducers(c, cfg)
+
+	provideKafkaConsumers(c, cfg)
 
 	provideUseCases(i)
 

@@ -13,6 +13,10 @@ type DialogHandlers interface {
 		req serverhttp.PostDialogUserIdSendRequestObject) (serverhttp.PostDialogUserIdSendResponseObject, error)
 	Get(ctx context.Context,
 		req serverhttp.GetDialogUserIdListRequestObject) (serverhttp.GetDialogUserIdListResponseObject, error)
+	ReadMessages(
+		ctx context.Context,
+		req serverhttp.PatchDialogUserIdReadMessagesMessageIdRequestObject,
+	) (serverhttp.PatchDialogUserIdReadMessagesMessageIdResponseObject, error)
 }
 
 type Handlers struct {
