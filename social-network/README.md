@@ -10,6 +10,7 @@
     ```bash
    cp ./build/local/.env.monolith.example ./build/local/.env.monolith
    cp ./build/local/.env.dialogs.example ./build/local/.env.dialogs
+   cp ./build/local/.env.counters.example ./build/local/.env.counters
    cp ./build/local/.env.compose.example ./build/local/.env.compose
 
 2. При необходимости поменять значения переменных в .env и .env.compose
