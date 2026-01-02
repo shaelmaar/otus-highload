@@ -11,6 +11,7 @@ run-local:
 	-f docker-compose-dialogs.yaml \
 	-f docker-compose-counters.yaml \
 	-f docker-compose-kafka.yaml \
+	-f docker-compose-monitoring.yaml \
 	-f docker-compose.yaml --env-file .env.compose up --build -d --force-recreate
 
 stop-local:
@@ -19,6 +20,7 @@ stop-local:
 	-f docker-compose-dialogs.yaml \
 	-f docker-compose-counters.yaml \
 	-f docker-compose-kafka.yaml \
+	-f docker-compose-monitoring.yaml \
 	-f docker-compose.yaml --env-file .env.compose down --remove-orphans
 
 stop-local-clear-volumes:
@@ -27,4 +29,5 @@ stop-local-clear-volumes:
 	-f docker-compose-dialogs.yaml \
 	-f docker-compose-counters.yaml \
 	-f docker-compose-kafka.yaml \
+	-f docker-compose-monitoring.yaml \
 	-f docker-compose.yaml --env-file .env.compose down --remove-orphans -v

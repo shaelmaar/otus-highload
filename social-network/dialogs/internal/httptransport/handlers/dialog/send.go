@@ -25,6 +25,15 @@ func (h *Handlers) Send(
 		return serverhttp.PostDialogUserIdSend400Response{}, nil
 	}
 
+	if err = randomErr(); err != nil {
+		h.logger.Error("internal error", zap.Error(err))
+
+		//nolint:nilerr // возвращается 500 ответ.
+		return serverhttp.PostDialogUserIdSend500JSONResponse{
+			N5xxJSONResponse: handlers.Simple500JSONResponse(""),
+		}, nil
+	}
+
 	err = h.useCases.CreateMessage(ctx, dto.DialogCreateMessage{
 		From: fromUserID,
 		To:   toUserID,

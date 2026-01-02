@@ -18,6 +18,10 @@ type Options struct {
 func Use(e *echo.Echo, opt *Options) {
 	e.Use(
 		recovery(),
+		metricsMiddleware(metricsConfig{
+			Skipper:     opt.MetricsSkipper,
+			ServiceName: opt.ServiceName,
+		}),
 		requestIDWithConfig(requestIDConfig{Skipper: opt.RequestIDSkipper}),
 		zapLoggerMiddleware(zapLoggerConfig{
 			ServiceName: opt.ServiceName,

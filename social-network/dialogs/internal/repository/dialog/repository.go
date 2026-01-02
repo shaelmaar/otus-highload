@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/tarantool/go-tarantool"
-	"github.com/tarantool/go-tarantool/datetime"
 
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/internal/domain"
 	"github.com/shaelmaar/otus-highload/social-network/dialogs/pkg/utils"
@@ -30,14 +30,9 @@ func New(
 }
 
 func (r *Repository) CreateDialogMessage(_ context.Context, message domain.DialogMessage) (uint64, error) {
-	dt, err := datetime.NewDatetime(message.CreatedAt.UTC())
-	if err != nil {
-		return 0, fmt.Errorf("failed to create datetime: %w", err)
-	}
-
 	resp, err := r.tarantoolConn.Call("add_message",
 		[]any{
-			message.DialogID, message.From, message.To, message.Text, message.State, dt,
+			message.DialogID, message.From, message.To, message.Text, message.State, message.CreatedAt.UnixMicro(),
 		})
 	if err != nil {
 		return 0, fmt.Errorf("failed to add message in tarantool: %w", err)
@@ -88,7 +83,7 @@ func (r *Repository) GetMessagesByDialog(
 		to, _ := t["to"].(uuid.UUID)
 		text, _ := t["text"].(string)
 		state, _ := t["state"].(string)
-		createdAt, _ := t["created_at"].(datetime.Datetime)
+		createdAt, _ := t["created_at"].(uint64)
 
 		msg := domain.DialogMessage{
 			ID:        id,
@@ -97,7 +92,7 @@ func (r *Repository) GetMessagesByDialog(
 			DialogID:  dialogID,
 			Text:      text,
 			State:     domain.DialogMessageState(state),
-			CreatedAt: createdAt.ToTime(),
+			CreatedAt: time.UnixMicro(int64(createdAt)),
 		}
 		messages = append(messages, msg)
 	}

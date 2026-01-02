@@ -25,7 +25,7 @@ if not box.space.dialog_messages then
             { name = 'to', type = 'uuid' },
             { name = 'text', type = 'string' },
             { name = 'state', type = 'string' },
-            { name = 'created_at', type = 'datetime' },
+            { name = 'created_at', type = 'unsigned' },
         }
     })
 
